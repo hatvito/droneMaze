@@ -17,19 +17,16 @@
       }
     }
   </script>
-  <!-- CodeMirror -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
-  
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-cyber-dark text-slate-100 min-h-screen font-sans grid-bg flex flex-col justify-between">
 
-  <!-- HEADER -->
   <header class="border-b border-cyber-border bg-cyber-dark/95 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
@@ -50,13 +47,54 @@
     </div>
   </header>
 
-  <!-- ARENA CONTENT -->
-  <main class="max-w-7xl mx-auto px-4 py-5 w-full flex-grow flex flex-col gap-6">
+  <main class="max-w-7xl mx-auto px-4 py-5 w-full flex-grow flex flex-col gap-4">
+
+    <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <button id="btn-mode-known" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i> 已知終點模式
+        </button>
+        <button id="btn-mode-fog" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-cyan-950 text-cyan-300 border border-cyan-700 shadow">
+          <i data-lucide="eye-off" class="w-3.5 h-3.5 text-cyan-400 animate-pulse"></i> 未知終點 (迷霧 Fog of War)
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="grid" class="w-3.5 h-3.5"></i> 尺寸:</label>
+          <select id="select-maze-size" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs font-mono">
+            <option value="11">11 x 11 (快速試煉)</option>
+            <option value="15" selected>15 x 15 (標準競技)</option>
+            <option value="21">21 x 21 (進階挑戰)</option>
+            <option value="31">31 x 31 (大師迷宮)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="key" class="w-3.5 h-3.5"></i> 種子 (Seed):</label>
+          <input type="number" id="input-seed" value="2026" class="w-20 bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs font-mono text-center">
+          <button id="btn-random-seed" class="p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition" title="隨機生成 Seed">
+            <i data-lucide="shuffle" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="compass" class="w-3.5 h-3.5"></i> 生成器:</label>
+          <select id="select-maze-algo" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs">
+            <option value="prim">Prim 隨機樹演算法</option>
+            <option value="dfs">回溯演算法 (DFS)</option>
+          </select>
+        </div>
+
+        <button id="btn-rebuild-maze" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-sky-500/30 rounded transition flex items-center gap-1 text-xs font-semibold">
+          <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置迷宮
+        </button>
+      </div>
+    </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      <!-- 左側：迷霧模擬畫布與即時機載感測器 -->
       <div class="lg:col-span-5 flex flex-col gap-4">
-        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col items-center">
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col items-center relative">
           <canvas id="compCanvas" class="rounded-lg border border-slate-800 bg-slate-950 shadow-inner"></canvas>
           
           <div class="w-full flex items-center justify-center gap-3 mt-4">
@@ -64,12 +102,11 @@
               <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> 啟動探索
             </button>
             <button id="btn-comp-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs flex items-center gap-1.5">
-              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 重置迷霧
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 重置位置
             </button>
           </div>
         </div>
 
-        <!-- 機載遙測 -->
         <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl">
           <div class="flex justify-between items-center mb-2">
             <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
@@ -78,7 +115,7 @@
             <span class="text-xs font-mono text-cyan-400 font-bold">開圖率: <span id="comp-discovery">0.0%</span></span>
           </div>
 
-          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
             <div class="bg-slate-900 p-2 rounded border border-slate-800">
               <div class="text-[10px] text-slate-400">當前座標</div>
               <div id="comp-pos" class="font-mono text-sky-400 font-bold mt-0.5">(1, 1)</div>
@@ -92,10 +129,28 @@
               <div id="comp-steps" class="font-mono text-amber-400 font-bold mt-0.5">0</div>
             </div>
           </div>
+
+          <div class="bg-slate-900/90 p-2.5 rounded border border-slate-800 grid grid-cols-4 gap-2 text-center">
+            <div>
+              <div class="text-[10px] text-slate-400">前方 (Front)</div>
+              <span id="sensor-front" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">右側 (Right)</div>
+              <span id="sensor-right" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">後方 (Back)</div>
+              <span id="sensor-back" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">左側 (Left)</div>
+              <span id="sensor-left" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500">CLEAR</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- 右側：代碼編輯器 -->
       <div class="lg:col-span-7 flex flex-col gap-4">
         <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col h-[520px]">
           <div class="flex items-center justify-between pb-3 border-b border-cyber-border">
@@ -120,14 +175,13 @@
       </div>
     </div>
 
-    <!-- 下方：多演算法天梯榜 (Benchmark) -->
     <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-cyber-border">
         <div>
           <h2 class="text-base font-bold text-cyan-400 flex items-center gap-2">
             <i data-lucide="award" class="w-5 h-5"></i> 多演算法大賽天梯榜 (Benchmark Leaderboard)
           </h2>
-          <p class="text-xs text-slate-400 mt-0.5">在相同迷霧種子條件下，同時評估「特雷莫」、「增量 DFS」、「沿牆法」與「當前自訂策略」。</p>
+          <p class="text-xs text-slate-400 mt-0.5">在相同的隨機種子與地圖條件下，評比「特雷莫」、「增量 DFS」、「沿牆法」與「當前自訂策略」。</p>
         </div>
         <button id="btn-comp-benchmark" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow">
           <i data-lucide="play-circle" class="w-4 h-4"></i> 開始全能競賽評測

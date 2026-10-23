@@ -1,6 +1,6 @@
 /**
  * App.js
- * 整合控制器：提供「教學演示模式」、「學生任務填空」與「迷霧尋跡大賽」三合一切換
+ * 整合控制器 (修正版)
  */
 
 import { Maze } from './maze.js';
@@ -17,19 +17,23 @@ export class App {
     this.maze = new Maze(21, 21, 2026);
     this.maze.generate('prim', 2026);
 
-    this.drone = new Drone(this.maze.start.x, this.maze.start.y);
     this.canvas = document.getElementById('mazeCanvas');
+    this.drone = new Drone(this.maze.start.x, this.maze.start.y);
     this.visualizer = new Visualizer(this.canvas, this.maze, this.drone);
     this.simulator = new DroneSimulator('mazeCanvas');
 
     this.editor = null;
     this.initEditor();
     this.bindEvents();
+    
+    // 初始化直接載入並繪製第一幕教學
     this.switchTab('learn');
   }
 
   initEditor() {
-    this.editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+    const editorEl = document.getElementById('code-editor');
+    if (!editorEl) return;
+    this.editor = CodeMirror.fromTextArea(editorEl, {
       mode: 'javascript',
       theme: 'dracula',
       lineNumbers: true,
@@ -72,12 +76,12 @@ export class App {
     });
 
     document.getElementById('learn-speed').addEventListener('input', (e) => {
-      this.visualizer.speed = 105 - parseInt(e.target.value);
+      this.visualizer.speed = 105 - parseInt(e.target.value, 10);
     });
 
     document.getElementById('select-code-template').addEventListener('change', (e) => {
       const key = e.target.value;
-      if (ALGORITHM_TEMPLATES[key]) {
+      if (ALGORITHM_TEMPLATES[key] && this.editor) {
         this.editor.setValue(ALGORITHM_TEMPLATES[key]);
       }
     });
@@ -105,15 +109,19 @@ export class App {
 
     if (tab === 'learn') {
       panelLearn.classList.remove('hidden');
+      panelLearn.classList.add('grid');
       tabLearn.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40 shadow';
       this.visualizer.resize();
+      this.visualizer.render();
     } else if (tab === 'code') {
       panelCode.classList.remove('hidden');
+      panelCode.classList.add('grid');
       tabCode.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40 shadow';
       this.simulator.init(this.maze);
-      this.editor.refresh();
+      if (this.editor) this.editor.refresh();
     } else if (tab === 'competition') {
       panelComp.classList.remove('hidden');
+      panelComp.classList.add('flex');
       tabComp.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40 shadow';
     }
   }
@@ -138,10 +146,32 @@ export class App {
     };
 
     const fn = algoMap[algoKey];
+    if (!fn) return;
+
     const t0 = performance.now();
     const result = fn(this.maze, this.maze.start, this.maze.end);
     const duration = (performance.now() - t0).toFixed(2);
-    document.getElementById('stat-time').textContent = `${duration} ms`;  this.visualizer.play( result, (prog) => { document.getElementById('stat-visited').textContent = prog.visitedCount; if (prog.pathCount > 0) document.getElementById('stat-path').textContent = prog.pathCount; }, () => { if (result.success) { document.getElementById('stat-path').textContent = result.solutionPath.length; } } ); }  runCustomCode() { this.simulator.init(this.maze); const code = this.editor.getValue(); try { const fn = new Function(`${code}\n return nextAction;`)();
+    document.getElementById('stat-time').textContent = duration + ' ms';
+
+    this.visualizer.play(
+      result,
+      (prog) => {
+        document.getElementById('stat-visited').textContent = prog.visitedCount;
+        if (prog.pathCount > 0) document.getElementById('stat-path').textContent = prog.pathCount;
+      },
+      () => {
+        if (result.success) {
+          document.getElementById('stat-path').textContent = result.solutionPath.length;
+        }
+      }
+    );
+  }
+
+  runCustomCode() {
+    this.simulator.init(this.maze);
+    const code = this.editor.getValue();
+    try {
+      const fn = new Function(code + '\n return nextAction;')();
       let steps = 0;
       const maxSteps = 1500;
 
@@ -161,7 +191,22 @@ export class App {
       };
       loop();
     } catch (err) {
-      alert(`語法或執行錯誤: ${err.message}`); } }  runBenchmark() { const tbody = document.getElementById('benchmark-body'); tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-sky-400 animate-pulse">評測運行中...</td></tr>';  const customCode = this.editor.getValue(); const results = BenchmarkEngine.run(this.maze, customCode);  tbody.innerHTML = ''; results.forEach((res, idx) => { const tr = document.createElement('tr'); tr.className = idx === 0 ? 'bg-emerald-950/30 font-bold' : 'hover:bg-slate-900/50'; const rank = idx === 0 ? '🥇 冠軍' : idx === 1 ? '🥈 亞軍' : idx === 2 ? '🥉 季軍' : `${idx + 1}`;
+      alert('語法或執行錯誤: ' + err.message);
+    }
+  }
+
+  runBenchmark() {
+    const tbody = document.getElementById('benchmark-body');
+    tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-sky-400 animate-pulse">評測運行中...</td></tr>';
+
+    const customCode = this.editor.getValue();
+    const results = BenchmarkEngine.run(this.maze, customCode);
+
+    tbody.innerHTML = '';
+    results.forEach((res, idx) => {
+      const tr = document.createElement('tr');
+      tr.className = idx === 0 ? 'bg-emerald-950/30 font-bold' : 'hover:bg-slate-900/50';
+      const rank = idx === 0 ? '🥇 冠軍' : idx === 1 ? '🥈 亞軍' : idx === 2 ? '🥉 季軍' : (idx + 1);
       const status = res.success
         ? '<span class="text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded text-xs border border-emerald-800">成功脫逃</span>'
         : '<span class="text-red-400 bg-red-950 px-2 py-0.5 rounded text-xs border border-red-800">失敗/超時</span>';
@@ -183,6 +228,6 @@ export class App {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
   window.app = new App();
 });

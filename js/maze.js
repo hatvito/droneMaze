@@ -1,15 +1,25 @@
 /**
  * Maze.js
- * 迷宮資料結構與產生演算法
- * 0: 空地 (Path)
- * 1: 牆壁 (Wall)
+ * 迷宮資料結構與地圖產生器
  */
 
-class Maze {
-  constructor(cols = 21, rows = 21) {
-    // 確保迷宮維度為奇數以利 Prim / DFS 迷宮生成
+export class MathRandomSeed {
+  constructor(seed = 12345) {
+    this.seed = seed;
+  }
+  next() {
+    let t = (this.seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
+export class Maze {
+  constructor(cols = 21, rows = 21, seed = 2026) {
     this.cols = cols % 2 === 0 ? cols + 1 : cols;
     this.rows = rows % 2 === 0 ? rows + 1 : rows;
+    this.seed = seed;
     this.grid = [];
     this.start = { x: 1, y: 1 };
     this.end = { x: this.cols - 2, y: this.rows - 2 };
@@ -20,51 +30,56 @@ class Maze {
     this.grid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(1));
   }
 
-  // 檢查座標是否合法且非障礙
   isWalkable(x, y) {
     if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) return false;
     return this.grid[y][x] === 0;
   }
 
-  // 產生隨機迷宮 (使用 Randomized Prim Algorithm)
-  generateRandom() {
+  generate(algo = 'prim', seed = 2026) {
     this.initGrid();
+    const rng = new MathRandomSeed(seed);
 
-    // 隨機選擇起點雕鑿
-    const startX = 1;
-    const startY = 1;
-    this.grid[startY][startX] = 0;
+    if (algo === 'dfs') {
+      const stack = [{ x: 1, y: 1 }];
+      this.grid[1][1] = 0;
+      const dirs = [{ dx: 0, dy: -2 }, { dx: 2, dy: 0 }, { dx: 0, dy: 2 }, { dx: -2, dy: 0 }];
 
-    const walls = [];
-
-    const addWalls = (x, y) => {
-      const directions = [
-        { dx: 0, dy: -2 },
-        { dx: 0, dy: 2 },
-        { dx: -2, dy: 0 },
-        { dx: 2, dy: 0 }
-      ];
-      for (const d of directions) {
-        const nx = x + d.dx;
-        const ny = y + d.dy;
-        if (nx > 0 && nx < this.cols - 1 && ny > 0 && ny < this.rows - 1) {
-          if (this.grid[ny][nx] === 1) {
-            walls.push({ x: nx, y: ny, px: x, py: y });
+      while (stack.length > 0) {
+        const curr = stack[stack.length - 1];
+        const neighbors = [];
+        for (const d of dirs) {
+          const nx = curr.x + d.dx, ny = curr.y + d.dy;
+          if (nx > 0 && nx < this.cols - 1 && ny > 0 && ny < this.rows - 1 && this.grid[ny][nx] === 1) {
+            neighbors.push({ x: nx, y: ny, dx: d.dx / 2, dy: d.dy / 2 });
           }
         }
+        if (neighbors.length > 0) {
+          const next = neighbors[Math.floor(rng.next() * neighbors.length)];
+          this.grid[curr.y + next.dy][curr.x + next.dx] = 0;
+          this.grid[next.y][next.x] = 0;
+          stack.push({ x: next.x, y: next.y });
+        } else {
+          stack.pop();
+        }
       }
-    };
-
-    addWalls(startX, startY);
-
-    while (walls.length > 0) {
-      const randIndex = Math.floor(Math.random() * walls.length);
-      const { x, y, px, py } = walls.splice(randIndex, 1)[0];
-
-      if (this.grid[y][x] === 1) {
-        this.grid[y][x] = 0;
-        this.grid[(y + py) / 2][(x + px) / 2] = 0; // 打通中間隔牆
-        addWalls(x, y);
+    } else {
+      this.grid[1][1] = 0;
+      const walls = [];
+      const addWalls = (x, y) => {
+        if (x > 1) walls.push({ x1: x, y1: y, x2: x - 2, y2: y, wx: x - 1, wy: y });
+        if (x < this.cols - 2) walls.push({ x1: x, y1: y, x2: x + 2, y2: y, wx: x + 1, wy: y });
+        if (y > 1) walls.push({ x1: x, y1: y, x2: x, y2: y - 2, wx: x, wy: y - 1 });
+        if (y < this.rows - 2) walls.push({ x1: x, y1: y, x2: x, y2: y + 2, wx: x, wy: y + 1 });
+      };
+      addWalls(1, 1);
+      while (walls.length > 0) {
+        const idx = Math.floor(rng.next() * walls.length);
+        const w = walls.splice(idx, 1)[0];
+        if (this.grid[w.y2][w.x2] === 1) {
+          this.grid[w.wy][w.wx] = 0;
+          this.grid[w.y2][w.x2] = 0;
+          addWalls(w.x2, w.y2);
+        }
       }
     }
 
@@ -74,10 +89,8 @@ class Maze {
     this.grid[this.end.y][this.end.x] = 0;
   }
 
-  // 載入預設教學關卡
   loadPreset(presetName) {
     if (presetName === 'simple') {
-      // 9x9 基礎 S 型轉彎迷宮
       this.cols = 9;
       this.rows = 9;
       this.grid = [
@@ -93,23 +106,8 @@ class Maze {
       ];
       this.start = { x: 1, y: 1 };
       this.end = { x: 7, y: 7 };
-    } else if (presetName === 'loops') {
-      // 帶有多路徑與迴圈的迷宮 (測試 BFS vs DFS 最短路徑)
-      this.cols = 13;
-      this.rows = 13;
-      this.initGrid();
-      this.generateRandom();
-      // 隨機打穿數個牆壁製造環路
-      for (let i = 0; i < 6; i++) {
-        const rx = 1 + Math.floor(Math.random() * (this.cols - 2));
-        const ry = 1 + Math.floor(Math.random() * (this.rows - 2));
-        this.grid[ry][rx] = 0;
-      }
     } else {
-      // 預設標準迷宮
-      this.cols = 21;
-      this.rows = 21;
-      this.generateRandom();
+      this.generate('prim', 2026);
     }
   }
 }

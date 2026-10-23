@@ -1,4 +1,9 @@
-/* Custom scrollbar */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -14,7 +19,6 @@
   background: #3b82f6;
 }
 
-/* CodeMirror height and font */
 .CodeMirror {
   height: 100% !important;
   font-family: 'Fira Code', 'JetBrains Mono', Consolas, monospace;
@@ -22,7 +26,6 @@
   border-radius: 0.5rem;
 }
 
-/* Cyber grid background */
 .grid-bg {
   background-size: 24px 24px;
   background-image:

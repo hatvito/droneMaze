@@ -1,111 +1,371 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>無人機演算法迷宮教學平台 (Drone Maze Algorithm Lab)</title>
+  <title>無人機迷宮尋跡大賽 (Drone Maze Competition Lab)</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              dark: '#0b1120',
+              card: '#151f32',
+              border: '#2a3a54',
+              accent: '#38bdf8',
+              neon: '#06b6d4',
+              emerald: '#10b981',
+              warning: '#f59e0b',
+              danger: '#ef4444',
+              fog: '#070a14'
+            }
+          },
+          fontFamily: {
+            mono: ['Fira Code', 'JetBrains Mono', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- CodeMirror Editor -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+
+  <!-- Lucide Icons & Canvas Confetti -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Custom CSS -->
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-  <div id="app-container">
-    <!-- 側邊控制列 -->
-    <aside id="sidebar">
-      <div>
-        <h1>🛸 無人機迷宮導航</h1>
-        <p class="subtitle">演算法與運算思維實驗平台</p>
+<body class="bg-cyber-dark text-slate-100 min-h-screen font-sans grid-bg flex flex-col justify-between overflow-x-hidden">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="border-b border-cyber-border bg-cyber-dark/95 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-cyan-500 via-sky-600 to-indigo-600 rounded-xl shadow-lg shadow-cyan-500/20">
+          <i data-lucide="plane" class="w-6 h-6 text-white transform rotate-45"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">
+              無人機迷宮尋跡大賽
+            </h1>
+            <span class="px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 uppercase">Pro v2.5</span>
+          </div>
+          <p class="text-xs text-slate-400">Drone Maze Exploration Sandbox with Fog of War & Multi-Agent Benchmark</p>
+        </div>
       </div>
 
-      <!-- 控制面板 -->
-      <div class="panel-section">
-        <h3>1. 導航演算法選擇</h3>
-        <div class="form-group">
-          <label for="algoSelect">解題演算法 (Algorithm)</label>
-          <select id="algoSelect">
-            <option value="righthand">右手法則 (Wall Follower)</option>
-            <option value="dfs">深度優先搜尋 (DFS)</option>
-            <option value="bfs" selected>廣度優先搜尋 (BFS)</option>
-            <option value="astar">A* 啟發式搜尋 (A-Star)</option>
+      <!-- Navigation Tabs & Rules -->
+      <div class="flex items-center gap-3">
+        <button id="btn-tab-single" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40 shadow">
+          <i data-lucide="play-circle" class="w-4 h-4"></i> 單機探索演練
+        </button>
+        <button id="btn-tab-benchmark" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2 border border-transparent">
+          <i data-lucide="trophy" class="w-4 h-4"></i> 多演算法大賽 (Benchmark)
+        </button>
+        <button id="btn-open-rules" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-all" title="規則與 API 說明">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="max-w-7xl mx-auto px-4 py-4 w-full flex-grow flex flex-col gap-4">
+
+    <!-- TOP CONTROL & GAME MODE BAR -->
+    <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      <!-- Mode Switcher -->
+      <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <button id="btn-mode-known" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i> 已知終點模式
+        </button>
+        <button id="btn-mode-fog" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow">
+          <i data-lucide="eye-off" class="w-3.5 h-3.5 text-cyan-400 animate-pulse"></i> 未知終點 (迷霧 Fog of War)
+        </button>
+      </div>
+
+      <!-- Maze Configuration -->
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="grid" class="w-3.5 h-3.5"></i> 尺寸:</label>
+          <select id="select-maze-size" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyber-accent">
+            <option value="11">11 x 11 (快速試煉)</option>
+            <option value="15" selected>15 x 15 (標準競技)</option>
+            <option value="21">21 x 21 (進階挑戰)</option>
+            <option value="31">31 x 31 (大師迷宮)</option>
           </select>
         </div>
-      </div>
 
-      <div class="panel-section">
-        <h3>2. 迷宮關卡配置</h3>
-        <div class="form-group">
-          <label for="mazeTypeSelect">地形地圖</label>
-          <select id="mazeTypeSelect">
-            <option value="random">隨機 Prim 迷宮 (21x21)</option>
-            <option value="simple">基礎教學 S 型迷宮 (9x9)</option>
-            <option value="loops">多路徑環狀迷宮 (13x13)</option>
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="key" class="w-3.5 h-3.5"></i> 種子 (Seed):</label>
+          <input type="number" id="input-seed" value="2026" class="w-20 bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs font-mono text-center focus:outline-none focus:border-cyber-accent">
+          <button id="btn-random-seed" class="p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition" title="隨機生成 Seed">
+            <i data-lucide="shuffle" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="compass" class="w-3.5 h-3.5"></i> 生成器:</label>
+          <select id="select-maze-algo" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyber-accent">
+            <option value="dfs">回溯演算法 (DFS)</option>
+            <option value="prim">Prim 隨機樹演算法</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="speedSlider">飛行模擬步頻速度</label>
-          <input type="range" id="speedSlider" min="10" max="100" value="75">
+
+        <button id="btn-rebuild-maze" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-sky-500/30 rounded transition flex items-center gap-1 text-xs font-semibold">
+          <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置迷宮
+        </button>
+      </div>
+
+      <!-- Execution Speed -->
+      <div class="flex items-center gap-2 text-xs">
+        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+        <span class="text-slate-400">飛行速度:</span>
+        <input type="range" id="input-speed" min="1" max="100" value="70" class="w-24 accent-cyber-accent cursor-pointer">
+        <span id="speed-label" class="font-mono text-cyber-accent w-10">70 FPS</span>
+      </div>
+    </div>
+
+    <!-- ================= VIEW MODE 1: SINGLE AGENT ARENA ================= -->
+    <div id="view-single" class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-grow">
+      
+      <!-- LEFT: Canvas & Real-time Sensors (5 Cols) -->
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <!-- Canvas Card -->
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-3 flex flex-col items-center justify-center relative shadow-xl overflow-hidden">
+          <canvas id="drone-canvas" class="rounded-lg border border-slate-800 bg-cyber-fog max-w-full shadow-inner cursor-crosshair"></canvas>
+          
+          <div class="absolute top-5 left-5 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-700 text-xs font-mono text-emerald-400 flex items-center gap-1.5 shadow">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            起點: (右下)
+          </div>
+
+          <div id="badge-goal" class="absolute top-5 right-5 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-700 text-xs font-mono text-amber-400 flex items-center gap-1.5 shadow">
+            <i data-lucide="flag" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span id="badge-goal-text">終點: 未知 (探索中)</span>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="mt-3 w-full flex items-center justify-center gap-2">
+            <button id="btn-run" class="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-lg shadow-lg shadow-emerald-900/40 transition flex items-center gap-2 text-sm">
+              <i data-lucide="play" class="w-4 h-4 fill-current"></i> 開始探索
+            </button>
+            <button id="btn-pause" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 rounded-lg transition flex items-center gap-2 text-sm" disabled>
+              <i data-lucide="pause" class="w-4 h-4"></i> 暫停
+            </button>
+            <button id="btn-step" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-sky-500/30 rounded-lg transition flex items-center gap-2 text-sm">
+              <i data-lucide="step-forward" class="w-4 h-4"></i> 單步
+            </button>
+            <button id="btn-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition flex items-center gap-2 text-sm">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置
+            </button>
+          </div>
         </div>
-        <div class="button-group" style="margin-top: 12px;">
-          <button id="btnRun">🚀 起飛執行</button>
-          <button id="btnReset" class="secondary">🔄 重設位置</button>
+
+        <!-- Sensor & Telemetry Dashboard -->
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold text-slate-300 tracking-wider uppercase flex items-center gap-1.5">
+              <i data-lucide="cpu" class="w-4 h-4 text-cyber-accent"></i> 機載遠測儀與開圖進度 (Telemetry)
+            </h3>
+            <div class="text-xs font-mono text-cyan-400 font-bold flex items-center gap-1">
+              <i data-lucide="radar" class="w-3.5 h-3.5 animate-spin"></i> 開圖率: <span id="telemetry-discovery">0.0%</span>
+            </div>
+          </div>
+
+          <div class="w-full bg-slate-900 h-2 rounded-full mb-3 overflow-hidden border border-slate-800">
+            <div id="discovery-bar" class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">當前座標</div>
+              <div id="telemetry-pos" class="text-xs font-mono font-bold text-sky-400 mt-0.5">(0, 0)</div>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">機頭朝向</div>
+              <div id="telemetry-dir" class="text-xs font-mono font-bold text-emerald-400 mt-0.5">NORTH</div>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">累積步數</div>
+              <div id="telemetry-steps" class="text-xs font-mono font-bold text-amber-400 mt-0.5">0</div>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">演算耗時</div>
+              <div id="telemetry-time" class="text-xs font-mono font-bold text-indigo-400 mt-0.5">0.0 ms</div>
+            </div>
+          </div>
+
+          <!-- Sensor Array -->
+          <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 grid grid-cols-4 gap-2 text-center">
+            <div>
+              <div class="text-[10px] text-slate-400">前方 (Front)</div>
+              <span id="sensor-front" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">右側 (Right)</div>
+              <span id="sensor-right" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">後方 (Back)</div>
+              <span id="sensor-back" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">左側 (Left)</div>
+              <span id="sensor-left" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- 統計數據 -->
-      <div class="panel-section">
-        <h3>3. 演算法效能評測</h3>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="label">探索節點數</div>
-            <div id="statVisited" class="value">0</div>
+      <!-- RIGHT: Code Editor & Templates (7 Cols) -->
+      <div class="lg:col-span-7 flex flex-col gap-4">
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 flex flex-col flex-grow shadow-xl h-[580px]">
+          
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyber-border">
+            <div class="flex items-center gap-2">
+              <i data-lucide="code" class="w-5 h-5 text-emerald-400"></i>
+              <h2 class="font-bold text-slate-200">無人機尋跡策略編輯器 (Strategy Script)</h2>
+            </div>
+
+            <!-- Algorithm Presets Selector (含學生挖空任務版) -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-slate-400">載入演算法範本:</span>
+              <select id="select-algo-template" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-sky-400 font-mono focus:outline-none focus:border-cyber-accent">
+                <optgroup label="未知終點/迷霧探索模式 (Fog Mode)">
+                  <option value="tremaux" selected>特雷莫演算法 (Trémaux)</option>
+                  <option value="tremaux_todo">★【學生任務填空】特雷莫演算法</option>
+                  <option value="incrementalDfs">增量 DFS 記憶探索 (Backtracking)</option>
+                  <option value="rightHand">沿牆搜尋法 (Right-Hand)</option>
+                  <option value="random">隨機隨機探索 (Random Explorer)</option>
+                </optgroup>
+                <optgroup label="已知終點全圖導航 (Known Goal Mode)">
+                  <option value="astar">A* 啟發式搜尋 (A-Star)</option>
+                  <option value="bfs">廣度優先搜尋 (BFS 最短路)</option>
+                </optgroup>
+              </select>
+            </div>
           </div>
-          <div class="stat-item">
-            <div class="label">最終路徑步數</div>
-            <div id="statPathLen" class="value">0</div>
+
+          <div class="flex-grow my-3 relative overflow-hidden rounded-lg border border-slate-800">
+            <textarea id="code-editor"></textarea>
           </div>
-          <div class="stat-item" style="grid-column: span 2;">
-            <div class="label">演算法運算耗時</div>
-            <div id="statTime" class="value">0 ms</div>
+
+          <div class="bg-slate-950 rounded-lg p-3 border border-slate-800 font-mono text-xs h-28 overflow-y-auto flex flex-col gap-1" id="console-log">
+            <div class="text-slate-500">// 系統就緒。選取右上方範本或自行編寫策略函數 nextAction(drone) 或 planPath(maze)...</div>
           </div>
         </div>
       </div>
 
-      <!-- 說明與圖例 -->
-      <div class="panel-section">
-        <h3>圖例與狀態說明</h3>
-        <div class="legend-grid">
-          <div class="legend-item">
-            <div class="color-dot" style="background: #38bdf8;"></div>
-            <span>起點 S</span>
+    </div>
+
+    <!-- ================= VIEW MODE 2: MULTI-DRONE BENCHMARK ARENA ================= -->
+    <div id="view-benchmark" class="hidden flex-col gap-4">
+      <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-cyber-border">
+          <div>
+            <h2 class="text-lg font-bold text-cyan-400 flex items-center gap-2">
+              <i data-lucide="trophy" class="w-5 h-5"></i> 多演算法同場競技評測 (Multi-Strategy Benchmark)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">在相同的隨機迷宮種子與迷霧條件下，同時評比不同演算法的開圖率、總步數與運算效率。</p>
           </div>
-          <div class="legend-item">
-            <div class="color-dot" style="background: #ef4444;"></div>
-            <span>終點 E</span>
-          </div>
-          <div class="legend-item">
-            <div class="color-dot" style="background: rgba(56, 189, 248, 0.4);"></div>
-            <span>探索節點 (Visited)</span>
-          </div>
-          <div class="legend-item">
-            <div class="color-dot" style="background: rgba(34, 197, 94, 0.7);"></div>
-            <span>脫逃路徑 (Path)</span>
-          </div>
+
+          <button id="btn-run-benchmark" class="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-lg shadow-lg shadow-cyan-900/40 transition flex items-center gap-2">
+            <i data-lucide="play-circle" class="w-5 h-5"></i> 開始全能競賽評測
+          </button>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900/90 text-xs uppercase text-slate-400 border-b border-slate-800 font-mono">
+              <tr>
+                <th class="p-3 text-center">名次</th>
+                <th class="p-3">策略名稱</th>
+                <th class="p-3 text-center">狀態</th>
+                <th class="p-3 text-right">探索開圖率</th>
+                <th class="p-3 text-right">移動步數 (Steps)</th>
+                <th class="p-3 text-right">演算法耗時 (Time)</th>
+                <th class="p-3 text-center">綜合評分</th>
+              </tr>
+            </thead>
+            <tbody id="benchmark-results-body" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="7" class="p-6 text-center text-slate-500">點擊「開始全能競賽評測」啟動跨演算法效能評比</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </aside>
+    </div>
 
-    <!-- 主舞台視覺化畫布 -->
-    <main id="main-area">
-      <div id="status-banner">系統就緒，請選擇演算法後起飛</div>
-      <div id="canvas-container">
-        <canvas id="mazeCanvas"></canvas>
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="border-t border-cyber-border bg-cyber-dark/80 py-3 text-center text-xs text-slate-500">
+    Drone Maze Exploration Sandbox &copy; 2026 STEM AI & Robotics Education Lab
+  </footer>
+
+  <!-- ==================== RULES MODAL ==================== -->
+  <div id="modal-rules" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-cyber-card border border-cyber-border rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-cyber-border pb-3">
+        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5"></i> 迷霧探索與編寫規則說明
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
       </div>
-    </main>
+
+      <div class="text-sm text-slate-300 space-y-3 overflow-y-auto max-h-[60vh] pr-2">
+        <h4 class="font-bold text-sky-400 text-base">一、 遊戲兩種模式 (Game Modes)</h4>
+        <ul class="list-disc list-inside space-y-1 text-slate-400">
+          <li><span class="text-emerald-400 font-semibold">已知終點模式</span>：終點座標已知，學生可呼叫 <code class="text-amber-300 font-mono">planPath(maze, start, goal)</code> 事前規劃全圖最佳解 (A*, BFS)。</li>
+          <li><span class="text-cyan-400 font-semibold">未知終點 (迷霧模式 Fog of War)</span>：終點隱藏於迷霧中，無人機僅能靠機載感測器揭露周圍地圖，需編寫 <code class="text-amber-300 font-mono">nextAction(drone)</code> 進行實時探索 (Trémaux, 沿牆法, 增量 DFS)。</li>
+        </ul>
+
+        <h4 class="font-bold text-sky-400 text-base">二、 機載感測器 API (drone)</h4>
+        <pre class="bg-slate-950 p-3 rounded border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto">
+// drone 機載介面與感測器
+drone.x / drone.y       // 當前網格座標
+drone.heading          // 當前朝向 ("NORTH", "EAST", "SOUTH", "WEST")
+drone.isWallInFront()  // 前方是否有牆壁 (true / false)
+drone.isWallRight()    // 右側是否有牆壁 (true / false)
+drone.isWallLeft()     // 左側是否有牆壁 (true / false)
+drone.isWallBack()     // 後方是否有牆壁 (true / false)
+drone.isGoalFound()    // 是否踏入終點格 (true / false)
+drone.memory           // 可自訂的持久化記憶體物件 {}
+
+// 傳回動作指令之一:
+return "FORWARD"; // 前進一格
+return "LEFT";    // 左轉 90 度
+return "RIGHT";   // 右轉 90 度
+return "U_TURN";  // 掉頭 180 度
+        </pre>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button id="btn-modal-ok" class="px-5 py-2 bg-cyber-accent text-slate-950 font-bold rounded-lg hover:bg-cyan-300 transition">
+          明白，開始挑戰！
+        </button>
+      </div>
+    </div>
   </div>
 
-  <!-- 模組化載入指令碼 -->
-  <script src="js/maze.js"></script>
-  <script src="js/drone.js"></script>
-  <script src="js/algorithms.js"></script>
-  <script src="js/visualizer.js"></script>
-  <script src="js/main.js"></script>
+  <!-- 模組化載入主程式 (ES Module) -->
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

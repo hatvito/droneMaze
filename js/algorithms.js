@@ -1,9 +1,10 @@
 /**
  * Algorithms.js
- * 教學演示核心演算法庫 (右手法則、DFS、BFS、A*)
+ * 教學演示核心演算法庫 (右手法則、特雷莫、DFS、BFS、A*)
  */
 
 export const MazeAlgorithms = {
+  // 1. 右手法則 (Wall Follower)
   solveRightHand: function(maze, start, end) {
     const visitedOrder = [];
     const solutionPath = [];
@@ -50,6 +51,54 @@ export const MazeAlgorithms = {
     return { visitedOrder, solutionPath, success };
   },
 
+  // 2. 特雷莫演算法 (Trémaux's Algorithm)
+  solveTremaux: function(maze, start, end) {
+    const visitedOrder = [];
+    const solutionPath = [];
+    const visitCounts = {};
+    const dirs = [
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: -1 }
+    ];
+
+    let cx = start.x;
+    let cy = start.y;
+    const maxSteps = maze.cols * maze.rows * 4;
+    let stepCount = 0;
+
+    solutionPath.push({ x: cx, y: cy });
+
+    while ((cx !== end.x || cy !== end.y) && stepCount < maxSteps) {
+      stepCount++;
+      const currentKey = cx + ',' + cy;
+      visitCounts[currentKey] = (visitCounts[currentKey] || 0) + 1;
+      visitedOrder.push({ x: cx, y: cy });
+
+      const candidates = [];
+      for (const d of dirs) {
+        const nx = cx + d.dx;
+        const ny = cy + d.dy;
+        if (maze.isWalkable(nx, ny)) {
+          const nKey = nx + ',' + ny;
+          candidates.push({ x: nx, y: ny, count: visitCounts[nKey] || 0 });
+        }
+      }
+
+      if (candidates.length === 0) break;
+
+      candidates.sort((a, b) => a.count - b.count);
+      cx = candidates[0].x;
+      cy = candidates[0].y;
+      solutionPath.push({ x: cx, y: cy });
+    }
+
+    const success = (cx === end.x && cy === end.y);
+    return { visitedOrder, solutionPath, success };
+  },
+
+  // 3. 深度優先搜尋 (DFS)
   solveDFS: function(maze, start, end) {
     const visitedOrder = [];
     const solutionPath = [];
@@ -64,7 +113,8 @@ export const MazeAlgorithms = {
       if (x === end.x && y === end.y) return true;
 
       for (const d of dirs) {
-        const nx = x + d.dx, ny = y + d.dy;
+        const nx = x + d.dx;
+        const ny = y + d.dy;
         if (maze.isWalkable(nx, ny) && !visited[ny][nx]) {
           if (dfs(nx, ny)) return true;
         }
@@ -78,6 +128,7 @@ export const MazeAlgorithms = {
     return { visitedOrder, solutionPath, success };
   },
 
+  // 4. 廣度優先搜尋 (BFS)
   solveBFS: function(maze, start, end) {
     const visitedOrder = [];
     const queue = [];
@@ -99,7 +150,8 @@ export const MazeAlgorithms = {
       }
 
       for (const d of dirs) {
-        const nx = current.x + d.dx, ny = current.y + d.dy;
+        const nx = current.x + d.dx;
+        const ny = current.y + d.dy;
         if (maze.isWalkable(nx, ny) && !visited[ny][nx]) {
           visited[ny][nx] = true;
           parentGrid[ny][nx] = { x: current.x, y: current.y };
@@ -120,6 +172,7 @@ export const MazeAlgorithms = {
     return { visitedOrder, solutionPath, success: found };
   },
 
+  // 5. A* 啟發式搜尋 (A-Star)
   solveAStar: function(maze, start, end) {
     const visitedOrder = [];
     const openSet = [];
@@ -148,7 +201,8 @@ export const MazeAlgorithms = {
       }
 
       for (const d of dirs) {
-        const nx = current.x + d.dx, ny = current.y + d.dy;
+        const nx = current.x + d.dx;
+        const ny = current.y + d.dy;
         if (maze.isWalkable(nx, ny) && !closedSet[ny][nx]) {
           const tentativeG = gScore[current.y][current.x] + 1;
           if (tentativeG < gScore[ny][nx]) {

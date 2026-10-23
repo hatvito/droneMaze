@@ -22,7 +22,6 @@
 </head>
 <body class="bg-cyber-dark text-slate-100 min-h-screen font-sans grid-bg flex flex-col justify-between">
 
-  <!-- 頂部導航 -->
   <header class="border-b border-cyber-border bg-cyber-dark/95 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
@@ -37,16 +36,13 @@
         </div>
       </div>
 
-      <!-- 跳轉至競賽頁面 -->
       <a href="competition.html" class="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg transition flex items-center gap-2">
         <i data-lucide="trophy" class="w-4 h-4"></i> 前往迷霧尋跡大賽 &rarr;
       </a>
     </div>
   </header>
 
-  <!-- 主教學區塊 -->
   <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-    <!-- 左側面板 -->
     <div class="lg:col-span-4 flex flex-col gap-4">
       <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl flex flex-col gap-4">
         <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -57,6 +53,7 @@
           <label class="text-xs text-slate-400">選擇解題演算法</label>
           <select id="select-learn-algo" class="bg-slate-900 border border-cyber-border rounded-lg px-3 py-2 text-xs text-sky-400 font-mono">
             <option value="righthand">右手法則 (Wall Follower)</option>
+            <option value="tremaux">特雷莫演算法 (Trémaux's Marking)</option>
             <option value="dfs">深度優先搜尋 (DFS 回溯)</option>
             <option value="bfs" selected>廣度優先搜尋 (BFS 最短路)</option>
             <option value="astar">A* 啟發式搜尋 (A-Star)</option>
@@ -86,7 +83,6 @@
         </div>
       </div>
 
-      <!-- 統計面板 -->
       <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl">
         <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
           <i data-lucide="activity" class="w-4 h-4 text-cyber-accent"></i> 演算法評測指標
@@ -108,7 +104,6 @@
       </div>
     </div>
 
-    <!-- 右側畫布視窗 -->
     <div class="lg:col-span-8 bg-cyber-card border border-cyber-border rounded-xl p-5 flex flex-col items-center justify-center shadow-xl">
       <div class="mb-3 w-full flex justify-between items-center text-xs text-slate-400">
         <span>起點 (S): 藍色停機坪 · 終點 (E): 紅色目標點</span>

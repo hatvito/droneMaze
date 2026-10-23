@@ -68,6 +68,7 @@ class LearnApp {
     const algoKey = document.getElementById('select-learn-algo').value;
     const algoMap = {
       'righthand': MazeAlgorithms.solveRightHand,
+      'tremaux': MazeAlgorithms.solveTremaux,
       'dfs': MazeAlgorithms.solveDFS,
       'bfs': MazeAlgorithms.solveBFS,
       'astar': MazeAlgorithms.solveAStar

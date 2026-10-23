@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upgraded Drone Maze Exploration Competition App (無人機迷宮尋跡大賽)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              dark: '#0b1120',
+              card: '#151f32',
+              border: '#2a3a54',
+              accent: '#38bdf8',
+              neon: '#06b6d4',
+              emerald: '#10b981',
+              warning: '#f59e0b',
+              danger: '#ef4444',
+              fog: '#070a14'
+            }
+          },
+          fontFamily: {
+            mono: ['Fira Code', 'JetBrains Mono', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <!-- CodeMirror Editor -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-thumb { background: #2a3a54; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+    .CodeMirror {
+      height: 100% !important;
+      font-family: 'Fira Code', 'JetBrains Mono', monospace;
+      font-size: 13px;
+      border-radius: 0.5rem;
+    }
+    .grid-bg {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(42, 58, 84, 0.25) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(42, 58, 84, 0.25) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-cyber-dark text-slate-100 min-h-screen font-sans grid-bg flex flex-col justify-between overflow-x-hidden">
+
+  <!-- ==================== HEADER / NAVBAR ==================== -->
+  <header class="border-b border-cyber-border bg-cyber-dark/95 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-cyan-500 via-sky-600 to-indigo-600 rounded-xl shadow-lg shadow-cyan-500/20">
+          <i data-lucide="plane" class="w-6 h-6 text-white transform rotate-45"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">
+              無人機迷宮尋跡大賽
+            </h1>
+            <span class="px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 uppercase">Pro v2.0</span>
+          </div>
+          <p class="text-xs text-slate-400">Drone Exploration Competition Sandbox with Full Fog of War Mode</p>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs & Controls -->
+      <div class="flex items-center gap-3">
+        <button id="btn-tab-single" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40 shadow">
+          <i data-lucide="play-circle" class="w-4 h-4"></i> 單機探索演練
+        </button>
+        <button id="btn-tab-benchmark" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2 border border-transparent">
+          <i data-lucide="trophy" class="w-4 h-4"></i> 多演算法大賽 (Benchmark)
+        </button>
+        <button id="btn-open-rules" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-all" title="規則與 API 說明">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT CONTAINER ==================== -->
+  <main class="max-w-7xl mx-auto px-4 py-4 w-full flex-grow flex flex-col gap-4">
+
+    <!-- TOP CONTROL & GAME MODE BAR -->
+    <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      
+      <!-- Mode Switcher -->
+      <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <button id="btn-mode-known" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i> 已知終點模式
+        </button>
+        <button id="btn-mode-fog" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow">
+          <i data-lucide="eye-off" class="w-3.5 h-3.5 text-cyan-400 animate-pulse"></i> 未知終點 (迷霧 Fog of War)
+        </button>
+      </div>
+
+      <!-- Maze Configuration -->
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="grid" class="w-3.5 h-3.5"></i> 尺寸:</label>
+          <select id="select-maze-size" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyber-accent">
+            <option value="11">11 x 11 (快速試煉)</option>
+            <option value="15" selected>15 x 15 (標準競技)</option>
+            <option value="21">21 x 21 (進階挑戰)</option>
+            <option value="31">31 x 31 (大師迷宮)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="key" class="w-3.5 h-3.5"></i> 種子 (Seed):</label>
+          <input type="number" id="input-seed" value="2026" class="w-20 bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs font-mono text-center focus:outline-none focus:border-cyber-accent">
+          <button id="btn-random-seed" class="p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition" title="隨機生成 Seed">
+            <i data-lucide="shuffle" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="compass" class="w-3.5 h-3.5"></i> 生成器:</label>
+          <select id="select-maze-algo" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyber-accent">
+            <option value="dfs">回溯演算法 (DFS)</option>
+            <option value="prim">Prim 隨機樹演算法</option>
+          </select>
+        </div>
+
+        <button id="btn-rebuild-maze" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-sky-500/30 rounded transition flex items-center gap-1 text-xs font-semibold">
+          <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置迷宮
+        </button>
+      </div>
+
+      <!-- Execution Speed -->
+      <div class="flex items-center gap-2 text-xs">
+        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+        <span class="text-slate-400">飛行速度:</span>
+        <input type="range" id="input-speed" min="1" max="100" value="70" class="w-24 accent-cyber-accent cursor-pointer">
+        <span id="speed-label" class="font-mono text-cyber-accent w-10">70 FPS</span>
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW MODE 1: SINGLE AGENT ARENA ================= -->
+    <div id="view-single" class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-grow">
+      
+      <!-- LEFT: Canvas & Real-time Sensors (5 Cols) -->
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <!-- Canvas Card -->
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-3 flex flex-col items-center justify-center relative shadow-xl overflow-hidden">
+          
+          <!-- Maze Canvas -->
+          <canvas id="drone-canvas" class="rounded-lg border border-slate-800 bg-cyber-fog max-w-full shadow-inner cursor-crosshair"></canvas>
+          
+          <!-- Canvas Overlay Badges -->
+          <div class="absolute top-5 left-5 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-700 text-xs font-mono text-emerald-400 flex items-center gap-1.5 shadow">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            起點: (右下)
+          </div>
+
+          <div id="badge-goal" class="absolute top-5 right-5 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-700 text-xs font-mono text-amber-400 flex items-center gap-1.5 shadow">
+            <i data-lucide="flag" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span id="badge-goal-text">終點: 未知 (探索中)</span>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="mt-3 w-full flex items-center justify-center gap-2">
+            <button id="btn-run" class="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-lg shadow-lg shadow-emerald-900/40 transition flex items-center gap-2 text-sm">
+              <i data-lucide="play" class="w-4 h-4 fill-current"></i> 開始探索
+            </button>
+            <button id="btn-pause" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 rounded-lg transition flex items-center gap-2 text-sm" disabled>
+              <i data-lucide="pause" class="w-4 h-4"></i> 暫停
+            </button>
+            <button id="btn-step" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-sky-500/30 rounded-lg transition flex items-center gap-2 text-sm">
+              <i data-lucide="step-forward" class="w-4 h-4"></i> 單步
+            </button>
+            <button id="btn-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition flex items-center gap-2 text-sm">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置
+            </button>
+          </div>
+        </div>
+
+        <!-- Sensor & Map Discovery Dashboard -->
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold text-slate-300 tracking-wider uppercase flex items-center gap-1.5">
+              <i data-lucide="cpu" class="w-4 h-4 text-cyber-accent"></i> 機載遠測儀與開圖進度 (Telemetry)
+            </h3>
+            <div class="text-xs font-mono text-cyan-400 font-bold flex items-center gap-1">
+              <i data-lucide="radar" class="w-3.5 h-3.5 animate-spin"></i> 開圖率: <span id="telemetry-discovery">0.0%</span>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="w-full bg-slate-900 h-2 rounded-full mb-3 overflow-hidden border border-slate-800">
+            <div id="discovery-bar" class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">當前座標</div>
+              <div id="telemetry-pos" class="text-xs font-mono font-bold text-sky-400 mt-0.5">(0, 0)</div>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">機頭朝向</div>
+              <div id="telemetry-dir" class="text-xs font-mono font-bold text-emerald-400 mt-0.5">NORTH</div>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">累積步數</div>
+              <div id="telemetry-steps" class="text-xs font-mono font-bold text-amber-400 mt-0.5">0</div>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase">演算耗時</div>
+              <div id="telemetry-time" class="text-xs font-mono font-bold text-indigo-400 mt-0.5">0.0 ms</div>
+            </div>
+          </div>
+
+          <!-- Proximity Wall Sensor Array (4 Directions) -->
+          <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 grid grid-cols-4 gap-2 text-center">
+            <div>
+              <div class="text-[10px] text-slate-400">前方 (Front)</div>
+              <span id="sensor-front" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">右側 (Right)</div>
+              <span id="sensor-right" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">後方 (Back)</div>
+              <span id="sensor-back" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">左側 (Left)</div>
+              <span id="sensor-left" class="mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-500 border border-slate-700">CLEAR</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Code Editor & Algorithm Selector (7 Cols) -->
+      <div class="lg:col-span-7 flex flex-col gap-4">
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 flex flex-col flex-grow shadow-xl h-[580px]">
+          
+          <!-- Editor Header Toolbar -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyber-border">
+            <div class="flex items-center gap-2">
+              <i data-lucide="code" class="w-5 h-5 text-emerald-400"></i>
+              <h2 class="font-bold text-slate-200">無人機尋跡策略編輯器 (Strategy Script)</h2>
+            </div>
+
+            <!-- Algorithm Presets Selector -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-slate-400">載入演算法範本:</span>
+              <select id="select-algo-template" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-sky-400 font-mono focus:outline-none focus:border-cyber-accent">
+                <optgroup label="未知終點/迷霧探索模式 (Fog Mode)">
+                  <option value="tremaux" selected>特雷莫演算法 (Trémaux's Marking Search)</option>
+                  <option value="incrementalDfs">增量 DFS 記憶探索 (Incremental DFS Backtracking)</option>
+                  <option value="rightHand">沿牆搜尋法 (Right-Hand Rule)</option>
+                  <option value="random">隨機隨機探索 (Random Explorer)</option>
+                </optgroup>
+                <optgroup label="已知終點全圖導航 (Known Goal Mode)">
+                  <option value="astar">A* 啟發式搜尋 (A-Star)</option>
+                  <option value="bfs">廣度優先搜尋 (BFS 最短路)</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <!-- CodeMirror Editor Container -->
+          <div class="flex-grow my-3 relative overflow-hidden rounded-lg border border-slate-800">
+            <textarea id="code-editor"></textarea>
+          </div>
+
+          <!-- Console Output Window -->
+          <div class="bg-slate-950 rounded-lg p-3 border border-slate-800 font-mono text-xs h-28 overflow-y-auto flex flex-col gap-1" id="console-log">
+            <div class="text-slate-500">// 系統就緒。選取右上方範本或自行編寫策略函數 nextAction(drone) 或 planPath(maze)...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW MODE 2: MULTI-DRONE BENCHMARK ARENA ================= -->
+    <div id="view-benchmark" class="hidden flex-col gap-4">
+      <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-cyber-border">
+          <div>
+            <h2 class="text-lg font-bold text-cyan-400 flex items-center gap-2">
+              <i data-lucide="trophy" class="w-5 h-5"></i> 多演算法同場競技評測 (Multi-Strategy Benchmark)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">在相同的隨機迷宮種子與迷霧條件下，同時評比不同演算法的開圖率、總步數與運算效率。</p>
+          </div>
+
+          <button id="btn-run-benchmark" class="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-lg shadow-lg shadow-cyan-900/40 transition flex items-center gap-2">
+            <i data-lucide="play-circle" class="w-5 h-5"></i> 開始全能競賽評測
+          </button>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900/90 text-xs uppercase text-slate-400 border-b border-slate-800 font-mono">
+              <tr>
+                <th class="p-3 text-center">名次</th>
+                <th class="p-3">策略名稱</th>
+                <th class="p-3 text-center">狀態</th>
+                <th class="p-3 text-right">探索開圖率</th>
+                <th class="p-3 text-right">移動步數 (Steps)</th>
+                <th class="p-3 text-right">演算法耗時 (Time)</th>
+                <th class="p-3 text-center">綜合評分</th>
+              </tr>
+            </thead>
+            <tbody id="benchmark-results-body" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="7" class="p-6 text-center text-slate-500">點擊「開始全能競賽評測」啟動跨演算法效能評比</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="border-t border-cyber-border bg-cyber-dark/80 py-3 text-center text-xs text-slate-500">
+    Upgraded Drone Maze Exploration Sandbox &copy; 2026 STEM AI & Robotics Education Lab
+  </footer>
+
+  <!-- ==================== RULES MODAL ==================== -->
+  <div id="modal-rules" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-cyber-card border border-cyber-border rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-cyber-border pb-3">
+        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5"></i> 迷霧探索與編寫規則說明
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="text-sm text-slate-300 space-y-3 overflow-y-auto max-h-[60vh] pr-2">
+        <h4 class="font-bold text-sky-400 text-base">一、 遊戲兩種模式 (Game Modes)</h4>
+        <ul class="list-disc list-inside space-y-1 text-slate-400">
+          <li><span class="text-emerald-400 font-semibold">已知終點模式</span>：終點座標已知，學生可呼叫 <code class="text-amber-300 font-mono">planPath(maze, start, goal)</code> 事前規劃全圖最佳解 (A*, BFS)。</li>
+          <li><span class="text-cyan-400 font-semibold">未知終點 (迷霧模式 Fog of War)</span>：終點隱藏於迷霧中，無人機僅能靠機載感測器揭露周圍地圖，需編寫 <code class="text-amber-300 font-mono">nextAction(drone)</code> 進行實時探索 (Trémaux, 沿牆法, 增量 DFS)。</li>
+        </ul>
+
+        <h4 class="font-bold text-sky-400 text-base">二、 機載感測器 API (drone)</h4>
+        <pre class="bg-slate-950 p-3 rounded border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto">
+// drone 機載介面與感測器
+drone.x / drone.y       // 當前網格座標
+drone.heading          // 當前朝向 ("NORTH", "EAST", "SOUTH", "WEST")
+drone.isWallInFront()  // 前方是否有牆壁 (true / false)
+drone.isWallRight()    // 右側是否有牆壁 (true / false)
+drone.isWallLeft()     // 左側是否有牆壁 (true / false)
+drone.isWallBack()     // 後方是否有牆壁 (true / false)
+drone.isGoalFound()    // 是否踏入終點格 (true / false)
+drone.memory           // 可自訂的持久化記憶體物件 {}
+
+// 傳回動作指令之一:
+return "FORWARD"; // 前進一格
+return "LEFT";    // 左轉 90 度
+return "RIGHT";   // 右轉 90 度
+return "U_TURN";  // 掉頭 180 度
+        </pre>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button id="btn-modal-ok" class="px-5 py-2 bg-cyber-accent text-slate-950 font-bold rounded-lg hover:bg-cyan-300 transition">
+          明白，開始挑戰！
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APPLICATION LOGIC ==================== -->
+  <script type="module">
+    /**
+     * ====================================================================
+     * MODULE 1: Seedable Random Generator
+     * ====================================================================
+     */
+    class MathRandomSeed {
+      constructor(seed = 12345) { this.seed = seed; }
+      next() {
+        let t = this.seed += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      }
+    }
+
+    /**
+     * ====================================================================
+     * MODULE 2: Maze Generator
+     * ====================================================================
+     */
+    class MazeGenerator {
+      static generate(width, height, seed = 2026, algo = 'dfs') {
+        if (width % 2 === 0) width++;
+        if (height % 2 === 0) height++;
+
+        const rng = new MathRandomSeed(seed);
+        const grid = Array.from({ length: height }, () => Array(width).fill(1));
+
+        if (algo === 'prim') this._generatePrim(grid, width, height, rng);
+        else this._generateDFS(grid, width, height, rng);
+
+        grid[1][1] = 0; // Goal (Top-Left)
+        grid[height - 2][width - 2] = 0; // Start (Bottom-Right)
+
+        return { grid, width, height, start: { x: width - 2, y: height - 2 }, goal: { x: 1, y: 1 } };
+      }
+
+      static _generateDFS(grid, width, height, rng) {
+        const stack = [{ x: 1, y: 1 }];
+        grid[1][1] = 0;
+        const dirs = [{ x: 0, y: -2 }, { x: 2, y: 0 }, { x: 0, y: 2 }, { x: -2, y: 0 }];
+
+        while (stack.length > 0) {
+          const current = stack[stack.length - 1];
+          const neighbors = [];
+          for (const d of dirs) {
+            const nx = current.x + d.x, ny = current.y + d.y;
+            if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && grid[ny][nx] === 1) {
+              neighbors.push({ x: nx, y: ny, dx: d.x / 2, dy: d.y / 2 });
+            }
+          }
+          if (neighbors.length > 0) {
+            const next = neighbors[Math.floor(rng.next() * neighbors.length)];
+            grid[current.y + next.dy][current.x + next.dx] = 0;
+            grid[next.y][next.x] = 0;
+            stack.push({ x: next.x, y: next.y });
+          } else {
+            stack.pop();
+          }
+        }
+      }
+
+      static _generatePrim(grid, width, height, rng) {
+        grid[1][1] = 0;
+        const walls = [];
+        const addWalls = (x, y) => {
+          if (x > 1) walls.push({ x1: x, y1: y, x2: x - 2, y2: y, wx: x - 1, wy: y });
+          if (x < width - 2) walls.push({ x1: x, y1: y, x2: x + 2, y2: y, wx: x + 1, wy: y });
+          if (y > 1) walls.push({ x1: x, y1: y, x2: x, y2: y - 2, wx: x, wy: y - 1 });
+          if (y < height - 2) walls.push({ x1: x, y1: y, x2: x, y2: y + 2, wx: x, wy: y + 1 });
+        };
+        addWalls(1, 1);
+        while (walls.length > 0) {
+          const idx = Math.floor(rng.next() * walls.length);
+          const w = walls.splice(idx, 1)[0];
+          if (grid[w.y2][w.x2] === 1) {
+            grid[w.wy][w.wx] = 0;
+            grid[w.y2][w.x2] = 0;
+            addWalls(w.x2, w.y2);
+          }
+        }
+      }
+    }
+
+    /**
+     * ====================================================================
+     * MODULE 3: Algorithm Preset Scripts
+     * ====================================================================
+     */
+    const ALGORITHM_TEMPLATES = {
+      tremaux: `// 特雷莫演算法 (Trémaux's Algorithm) - 未知終點/迷霧專用
+// 策略：在地圖節點做記號(訪問次數)。優先走沒走過的路；若撞死胡同或舊路，則退回標記2次並尋找新通道
+function nextAction(drone) {
+  if (!drone.memory.visited) drone.memory.visited = {};
+  const posKey = \`\${drone.x},\${drone.y}\`;
+  drone.memory.visited[posKey] = (drone.memory.visited[posKey] || 0) + 1;
+
+  // 取得四個方向中未撞牆且訪問次數最少的方向
+  const candidates = [];
+  
+  if (!drone.isWallInFront()) {
+    const fPos = drone.getRelativePos('FRONT');
+    candidates.push({ action: 'FORWARD', count: drone.memory.visited[\`\${fPos.x},\${fPos.y}\`] || 0 });
+  }
+  if (!drone.isWallRight()) {
+    const rPos = drone.getRelativePos('RIGHT');
+    candidates.push({ action: 'RIGHT', count: drone.memory.visited[\`\${rPos.x},\${rPos.y}\`] || 0 });
+  }
+  if (!drone.isWallLeft()) {
+    const lPos = drone.getRelativePos('LEFT');
+    candidates.push({ action: 'LEFT', count: drone.memory.visited[\`\${lPos.x},\${lPos.y}\`] || 0 });
+  }
+
+  if (candidates.length === 0) return 'U_TURN'; // 死胡同
+
+  // 排序：優先選取訪問次數最少(未開圖)的方向
+  candidates.sort((a, b) => a.count - b.count);
+  return candidates[0].action;
+}`,
+
+      incrementalDfs: `// 增量 DFS 記憶探索 (Incremental DFS Backtracking)
+// 策略：在無人機記憶體中維護一個探索 Stack，當前方無新路時自動回溯
+function nextAction(drone) {
+  if (!drone.memory.stack) {
+    drone.memory.stack = [{ x: drone.x, y: drone.y }];
+    drone.memory.visited = new Set([\`\${drone.x},\${drone.y}\`]);
+  }
+
+  // 檢查鄰近是否有未訪問過的格子
+  const checkDirection = (action, getPosFn) => {
+    const p = getPosFn();
+    const key = \`\${p.x},\${p.y}\`;
+    if (!drone.memory.visited.has(key)) {
+      drone.memory.visited.add(key);
+      drone.memory.stack.push(p);
+      return action;
+    }
+    return null;
+  };
+
+  if (!drone.isWallInFront()) {
+    const act = checkDirection('FORWARD', () => drone.getRelativePos('FRONT'));
+    if (act) return act;
+  }
+  if (!drone.isWallRight()) {
+    const act = checkDirection('RIGHT', () => drone.getRelativePos('RIGHT'));
+    if (act) return act;
+  }
+  if (!drone.isWallLeft()) {
+    const act = checkDirection('LEFT', () => drone.getRelativePos('LEFT'));
+    if (act) return act;
+  }
+
+  // 若周圍皆已走過，觸發 Backtrack 回溯
+  drone.memory.stack.pop();
+  if (drone.memory.stack.length > 0) {
+    const target = drone.memory.stack[drone.memory.stack.length - 1];
+    return drone.getDirectionTo(target);
+  }
+
+  return 'FORWARD';
+}`,
+
+      rightHand: `// 沿牆搜尋法 (Right-Hand Rule)
+function nextAction(drone) {
+  if (!drone.isWallRight()) return "RIGHT";
+  else if (!drone.isWallInFront()) return "FORWARD";
+  else if (!drone.isWallLeft()) return "LEFT";
+  else return "U_TURN";
+}`,
+
+      random: `// 隨機探索 (Random Explorer)
+function nextAction(drone) {
+  const options = [];
+  if (!drone.isWallInFront()) options.push('FORWARD');
+  if (!drone.isWallRight()) options.push('RIGHT');
+  if (!drone.isWallLeft()) options.push('LEFT');
+  if (options.length === 0) return 'U_TURN';
+  return options[Math.floor(Math.random() * options.length)];
+}`,
+
+      astar: `// A* 啟發式搜尋 (已知終點模式)
+function planPath(maze, start, goal) {
+  function h(a, b) { return Math.abs(a.x - b.x) + Math.abs(a.y - b.y); }
+  const openSet = [{ node: start, path: [start], g: 0, f: h(start, goal) }];
+  const visited = new Map();
+
+  while (openSet.length > 0) {
+    openSet.sort((a, b) => a.f - b.f);
+    const { node, path, g } = openSet.shift();
+    if (node.x === goal.x && node.y === goal.y) return path;
+
+    const key = \`\${node.x},\${node.y}\`;
+    if (visited.has(key) && visited.get(key) <= g) continue;
+    visited.set(key, g);
+
+    const dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
+    for (const d of dirs) {
+      const nx = node.x + d.x, ny = node.y + d.y;
+      if (nx >= 0 && nx < maze[0].length && ny >= 0 && ny < maze.length && maze[ny][nx] === 0) {
+        const nextNode = { x: nx, y: ny };
+        const nextG = g + 1;
+        openSet.push({ node: nextNode, path: [...path, nextNode], g: nextG, f: nextG + h(nextNode, goal) });
+      }
+    }
+  }
+  return [];
+}`,
+
+      bfs: `// 廣度優先搜尋 (BFS 最短路)
+function planPath(maze, start, goal) {
+  const queue = [[start]];
+  const visited = new Set([\`\${start.x},\${start.y}\`]);
+  const dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
+
+  while (queue.length > 0) {
+    const path = queue.shift();
+    const curr = path[path.length - 1];
+    if (curr.x === goal.x && curr.y === goal.y) return path;
+
+    for (const d of dirs) {
+      const nx = curr.x + d.x, ny = curr.y + d.y;
+      if (nx >= 0 && nx < maze[0].length && ny >= 0 && ny < maze.length && maze[ny][nx] === 0) {
+        if (!visited.has(\`\${nx},\${ny}\`)) {
+          visited.add(\`\${nx},\${ny}\`);
+          queue.push([...path, {x: nx, y: ny}]);
+        }
+      }
+    }
+  }
+  return [];
+}`
+    };
+
+    /**
+     * ====================================================================
+     * MODULE 4: Drone Agent Simulator & Canvas Renderer (with Fog of War)
+     * ====================================================================
+     */
+    class DroneSimulator {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.mazeData = null;
+        this.gameMode = 'fog'; // 'known' or 'fog'
+        this.drone = {
+          x: 0,
+          y: 0,
+          dirIndex: 0 // 0: NORTH, 1: EAST, 2: SOUTH, 3: WEST
+        };
+        this.memory = {};
+
+        this.directions = [
+          { name: 'NORTH', dx: 0, dy: -1 },
+          { name: 'EAST', dx: 1, dy: 0 },
+          { name: 'SOUTH', dx: 0, dy: 1 },
+          { name: 'WEST', dx: -1, dy: 0 }
+        ];
+
+        this.fogMap = new Set(); // Revealed cell keys
+        this.visitedCells = new Set();
+        this.pathHistory = [];
+        this.steps = 0;
+        this.cellSize = 20;
+        this.rotorAngle = 0;
+      }
+
+      init(mazeData, mode = 'fog') {
+        this.mazeData = mazeData;
+        this.gameMode = mode;
+        this.drone.x = mazeData.start.x;
+        this.drone.y = mazeData.start.y;
+        this.drone.dirIndex = 0;
+        this.memory = {};
+
+        this.fogMap = new Set();
+        this.visitedCells = new Set();
+        this.visitedCells.add(`${this.drone.x},${this.drone.y}`);
+        this.pathHistory = [{ x: this.drone.x, y: this.drone.y }];
+        this.steps = 0;
+
+        this.revealSensorsFog();
+        this.resizeCanvas();
+        this.render();
+      }
+
+      resizeCanvas() {
+        if (!this.mazeData) return;
+        const maxDisplaySize = 460;
+        this.cellSize = Math.floor(maxDisplaySize / Math.max(this.mazeData.width, this.mazeData.height));
+        this.canvas.width = this.mazeData.width * this.cellSize;
+        this.canvas.height = this.mazeData.height * this.cellSize;
+      }
+
+      revealSensorsFog() {
+        // Unveil 3x3 surrounding cells
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const rx = this.drone.x + dx;
+            const ry = this.drone.y + dy;
+            if (rx >= 0 && rx < this.mazeData.width && ry >= 0 && ry < this.mazeData.height) {
+              this.fogMap.add(`${rx},${ry}`);
+            }
+          }
+        }
+      }
+
+      getRelativePos(offsetStr) {
+        let dirIdx = this.drone.dirIndex;
+        if (offsetStr === 'RIGHT') dirIdx = (dirIdx + 1) % 4;
+        else if (offsetStr === 'LEFT') dirIdx = (dirIdx + 3) % 4;
+        else if (offsetStr === 'BACK') dirIdx = (dirIdx + 2) % 4;
+        const d = this.directions[dirIdx];
+        return { x: this.drone.x + d.dx, y: this.drone.y + d.dy };
+      }
+
+      getDirectionTo(targetPos) {
+        if (targetPos.x > this.drone.x) return this.drone.dirIndex === 1 ? 'FORWARD' : 'RIGHT';
+        if (targetPos.x < this.drone.x) return this.drone.dirIndex === 3 ? 'FORWARD' : 'LEFT';
+        if (targetPos.y > this.drone.y) return this.drone.dirIndex === 2 ? 'FORWARD' : 'RIGHT';
+        if (targetPos.y < this.drone.y) return this.drone.dirIndex === 0 ? 'FORWARD' : 'LEFT';
+        return 'FORWARD';
+      }
+
+      isWallInFront() { return this._isWallOffset(0); }
+      isWallRight() { return this._isWallOffset(1); }
+      isWallBack() { return this._isWallOffset(2); }
+      isWallLeft() { return this._isWallOffset(3); }
+
+      _isWallOffset(offset) {
+        const dir = this.directions[(this.drone.dirIndex + offset) % 4];
+        const nx = this.drone.x + dir.dx;
+        const ny = this.drone.y + dir.dy;
+        if (nx < 0 || nx >= this.mazeData.width || ny < 0 || ny >= this.mazeData.height) return true;
+        return this.mazeData.grid[ny][nx] === 1;
+      }
+
+      turnLeft() { this.drone.dirIndex = (this.drone.dirIndex + 3) % 4; }
+      turnRight() { this.drone.dirIndex = (this.drone.dirIndex + 1) % 4; }
+      uTurn() { this.drone.dirIndex = (this.drone.dirIndex + 2) % 4; }
+
+      moveForward() {
+        if (!this.isWallInFront()) {
+          const dir = this.directions[this.drone.dirIndex];
+          this.drone.x += dir.dx;
+          this.drone.y += dir.dy;
+          this.steps++;
+          this.visitedCells.add(`${this.drone.x},${this.drone.y}`);
+          this.pathHistory.push({ x: this.drone.x, y: this.drone.y });
+          this.revealSensorsFog();
+          return true;
+        }
+        return false;
+      }
+
+      isGoalReached() {
+        return this.drone.x === this.mazeData.goal.x && this.drone.y === this.mazeData.goal.y;
+      }
+
+      getDiscoveryRate() {
+        const totalPathable = this.mazeData.width * this.mazeData.height;
+        return ((this.fogMap.size / totalPathable) * 100).toFixed(1);
+      }
+
+      render() {
+        if (!this.mazeData) return;
+        const ctx = this.ctx;
+        const cs = this.cellSize;
+        const grid = this.mazeData.grid;
+
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 1. Draw Maze Cells (or Fog overlay)
+        for (let y = 0; y < this.mazeData.height; y++) {
+          for (let x = 0; x < this.mazeData.width; x++) {
+            const key = `${x},${y}`;
+            const isRevealed = this.gameMode === 'known' || this.fogMap.has(key);
+
+            if (!isRevealed) {
+              // Fog cell
+              ctx.fillStyle = '#070a14';
+              ctx.fillRect(x * cs, y * cs, cs, cs);
+              ctx.strokeStyle = '#0f172a';
+              ctx.strokeRect(x * cs, y * cs, cs, cs);
+            } else {
+              if (grid[y][x] === 1) {
+                ctx.fillStyle = '#1e293b'; // Wall
+                ctx.fillRect(x * cs, y * cs, cs, cs);
+                ctx.strokeStyle = '#334155';
+                ctx.strokeRect(x * cs, y * cs, cs, cs);
+              } else {
+                ctx.fillStyle = '#0f172a'; // Path
+                ctx.fillRect(x * cs, y * cs, cs, cs);
+              }
+            }
+          }
+        }
+
+        // 2. Visited Trajectory Heatmap
+        this.visitedCells.forEach(key => {
+          const [vx, vy] = key.split(',').map(Number);
+          ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+          ctx.fillRect(vx * cs + 1, vy * cs + 1, cs - 2, cs - 2);
+        });
+
+        // 3. Trajectory Path Line
+        if (this.pathHistory.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = Math.max(2, cs / 5);
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          this.pathHistory.forEach((pt, idx) => {
+            const cx = pt.x * cs + cs / 2;
+            const cy = pt.y * cs + cs / 2;
+            if (idx === 0) ctx.moveTo(cx, cy);
+            else ctx.lineTo(cx, cy);
+          });
+          ctx.stroke();
+        }
+
+        // 4. Render Goal Indicator (If revealed or in known mode)
+        const goalKey = `${this.mazeData.goal.x},${this.mazeData.goal.y}`;
+        if (this.gameMode === 'known' || this.fogMap.has(goalKey)) {
+          const gx = this.mazeData.goal.x * cs + cs / 2;
+          const gy = this.mazeData.goal.y * cs + cs / 2;
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(gx, gy, cs * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // 5. Render Drone
+        const dx = this.drone.x * cs + cs / 2;
+        const dy = this.drone.y * cs + cs / 2;
+
+        ctx.save();
+        ctx.translate(dx, dy);
+        const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+        ctx.rotate(angles[this.drone.dirIndex]);
+
+        // Rotors & Frame
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = Math.max(2, cs / 8);
+        ctx.beginPath();
+        ctx.moveTo(-cs * 0.3, -cs * 0.3); ctx.lineTo(cs * 0.3, cs * 0.3);
+        ctx.moveTo(cs * 0.3, -cs * 0.3); ctx.lineTo(-cs * 0.3, cs * 0.3);
+        ctx.stroke();
+
+        this.rotorAngle += 0.3;
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.75)';
+        [
+          { x: -cs * 0.3, y: -cs * 0.3 }, { x: cs * 0.3, y: -cs * 0.3 },
+          { x: -cs * 0.3, y: cs * 0.3 }, { x: cs * 0.3, y: cs * 0.3 }
+        ].forEach(off => {
+          ctx.beginPath();
+          ctx.arc(off.x, off.y, cs * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Body Center & Nose
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(0, 0, cs * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.moveTo(0, -cs * 0.32);
+        ctx.lineTo(-cs * 0.12, -cs * 0.1);
+        ctx.lineTo(cs * 0.12, -cs * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    /**
+     * ====================================================================
+     * MODULE 5: Main Application Controller
+     * ====================================================================
+     */
+    class AppController {
+      constructor() {
+        this.mazeData = null;
+        this.gameMode = 'fog'; // 'known' or 'fog'
+        this.editor = null;
+        this.simulator = new DroneSimulator('drone-canvas');
+
+        this.isRunning = false;
+        this.isPaused = false;
+        this.animationTimer = null;
+        this.planPathQueue = [];
+        this.startTime = 0;
+
+        this.initCodeEditor();
+        this.bindEvents();
+        this.rebuildMaze();
+      }
+
+      initCodeEditor() {
+        this.editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+          mode: 'javascript',
+          theme: 'dracula',
+          lineNumbers: true,
+          indentUnit: 2,
+          tabSize: 2,
+          autoCloseBrackets: true
+        });
+        this.editor.setValue(ALGORITHM_TEMPLATES.tremaux);
+      }
+
+      logConsole(msg, type = 'info') {
+        const consoleEl = document.getElementById('console-log');
+        const entry = document.createElement('div');
+        const timestamp = new Date().toLocaleTimeString();
+
+        if (type === 'error') entry.className = 'text-red-400 font-semibold';
+        else if (type === 'success') entry.className = 'text-emerald-400 font-semibold';
+        else entry.className = 'text-slate-300';
+
+        entry.textContent = `[${timestamp}] ${msg}`;
+        consoleEl.appendChild(entry);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
+
+      setGameMode(mode) {
+        this.gameMode = mode;
+        const btnKnown = document.getElementById('btn-mode-known');
+        const btnFog = document.getElementById('btn-mode-fog');
+        const goalBadge = document.getElementById('badge-goal-text');
+
+        if (mode === 'known') {
+          btnKnown.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-emerald-950 text-emerald-300 border border-emerald-700 shadow';
+          btnFog.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200';
+          goalBadge.textContent = '終點: (0, 0) 已知';
+          this.editor.setValue(ALGORITHM_TEMPLATES.astar);
+        } else {
+          btnFog.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-cyan-950 text-cyan-300 border border-cyan-700 shadow';
+          btnKnown.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200';
+          goalBadge.textContent = '終點: 未知 (探索中)';
+          this.editor.setValue(ALGORITHM_TEMPLATES.tremaux);
+        }
+
+        this.rebuildMaze();
+      }
+
+      rebuildMaze() {
+        this.stopSimulation();
+        const size = parseInt(document.getElementById('select-maze-size').value, 10);
+        const seed = parseInt(document.getElementById('input-seed').value, 10);
+        const algo = document.getElementById('select-maze-algo').value;
+
+        this.mazeData = MazeGenerator.generate(size, size, seed, algo);
+        this.simulator.init(this.mazeData, this.gameMode);
+        this.updateTelemetry();
+        this.logConsole(`迷宮成功重置: 模式 [${this.gameMode.toUpperCase()}], 尺寸 ${size}x${size}, 種子 ${seed}`);
+      }
+
+      updateTelemetry(executionTime = 0) {
+        document.getElementById('telemetry-pos').textContent = `(${this.simulator.drone.x}, ${this.simulator.drone.y})`;
+        document.getElementById('telemetry-dir').textContent = this.simulator.directions[this.simulator.drone.dirIndex].name;
+        document.getElementById('telemetry-steps').textContent = this.simulator.steps;
+        document.getElementById('telemetry-time').textContent = `${executionTime.toFixed(1)} ms`;
+
+        const rate = this.simulator.getDiscoveryRate();
+        document.getElementById('telemetry-discovery').textContent = `${rate}%`;
+        document.getElementById('discovery-bar').style.width = `${rate}%`;
+
+        const formatSensor = (elId, isWall) => {
+          const el = document.getElementById(elId);
+          if (isWall) {
+            el.textContent = 'WALL';
+            el.className = 'mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-950 text-red-400 border border-red-800';
+          } else {
+            el.textContent = 'CLEAR';
+            el.className = 'mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800';
+          }
+        };
+
+        formatSensor('sensor-front', this.simulator.isWallInFront());
+        formatSensor('sensor-right', this.simulator.isWallRight());
+        formatSensor('sensor-back', this.simulator.isWallBack());
+        formatSensor('sensor-left', this.simulator.isWallLeft());
+      }
+
+      bindEvents() {
+        document.getElementById('btn-mode-known').addEventListener('click', () => this.setGameMode('known'));
+        document.getElementById('btn-mode-fog').addEventListener('click', () => this.setGameMode('fog'));
+
+        document.getElementById('btn-tab-single').addEventListener('click', () => this.switchTab('single'));
+        document.getElementById('btn-tab-benchmark').addEventListener('click', () => this.switchTab('benchmark'));
+
+        document.getElementById('btn-rebuild-maze').addEventListener('click', () => this.rebuildMaze());
+        document.getElementById('btn-random-seed').addEventListener('click', () => {
+          document.getElementById('input-seed').value = Math.floor(Math.random() * 90000) + 10000;
+          this.rebuildMaze();
+        });
+
+        document.getElementById('select-algo-template').addEventListener('change', (e) => {
+          const algoKey = e.target.value;
+          if (ALGORITHM_TEMPLATES[algoKey]) {
+            this.editor.setValue(ALGORITHM_TEMPLATES[algoKey]);
+            this.logConsole(`載入範本策略: ${e.target.options[e.target.selectedIndex].text}`);
+          }
+        });
+
+        document.getElementById('input-speed').addEventListener('input', (e) => {
+          document.getElementById('speed-label').textContent = `${e.target.value} FPS`;
+        });
+
+        document.getElementById('btn-run').addEventListener('click', () => this.startSimulation());
+        document.getElementById('btn-pause').addEventListener('click', () => this.pauseSimulation());
+        document.getElementById('btn-step').addEventListener('click', () => this.stepSimulation());
+        document.getElementById('btn-reset').addEventListener('click', () => {
+          this.stopSimulation();
+          this.simulator.init(this.mazeData, this.gameMode);
+          this.updateTelemetry();
+          this.logConsole('已回到起點。');
+        });
+
+        document.getElementById('btn-open-rules').addEventListener('click', () => {
+          document.getElementById('modal-rules').classList.remove('hidden');
+        });
+        document.getElementById('btn-close-modal').addEventListener('click', () => {
+          document.getElementById('modal-rules').classList.add('hidden');
+        });
+        document.getElementById('btn-modal-ok').addEventListener('click', () => {
+          document.getElementById('modal-rules').classList.add('hidden');
+        });
+
+        document.getElementById('btn-run-benchmark').addEventListener('click', () => this.runBenchmark());
+      }
+
+      switchTab(tab) {
+        const singleView = document.getElementById('view-single');
+        const benchView = document.getElementById('view-benchmark');
+        const btnSingle = document.getElementById('btn-tab-single');
+        const btnBench = document.getElementById('btn-tab-benchmark');
+
+        if (tab === 'single') {
+          singleView.classList.remove('hidden');
+          benchView.classList.add('hidden');
+          btnSingle.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40';
+          btnBench.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2 border border-transparent';
+        } else {
+          singleView.classList.add('hidden');
+          benchView.classList.remove('hidden');
+          btnBench.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40';
+          btnSingle.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2 border border-transparent';
+        }
+      }
+
+      startSimulation() {
+        if (this.isRunning && !this.isPaused) return;
+
+        if (!this.isPaused) {
+          this.stopSimulation();
+          this.simulator.init(this.mazeData, this.gameMode);
+          this.planPathQueue = [];
+          this.startTime = performance.now();
+
+          const code = this.editor.getValue();
+          try {
+            const userScript = new Function(`${code}\n return { nextAction: typeof nextAction !== 'undefined' ? nextAction : null, planPath: typeof planPath !== 'undefined' ? planPath : null };`)();
+
+            if (userScript.planPath) {
+              if (this.gameMode === 'fog') {
+                this.logConsole('警告：迷霧/未知終點模式下無法使用全圖 planPath，切換為次要步進機制。', 'error');
+                return;
+              }
+              const t0 = performance.now();
+              const fullPath = userScript.planPath(this.mazeData.grid, this.mazeData.start, this.mazeData.goal);
+              this.calcTime = performance.now() - t0;
+
+              if (Array.isArray(fullPath) && fullPath.length > 0) {
+                this.planPathQueue = fullPath.slice(1);
+                this.logConsole(`全圖路徑規劃成功！總長度: ${fullPath.length}，耗時: ${this.calcTime.toFixed(2)} ms`, 'success');
+              } else {
+                this.logConsole('規劃失敗：無法找到可到達終點的路徑！', 'error');
+                return;
+              }
+            } else if (userScript.nextAction) {
+              this.userNextAction = userScript.nextAction;
+              this.logConsole('步進探索策略已成功編譯與掛載！', 'success');
+            }
+          } catch (err) {
+            this.logConsole(`編譯/執行錯誤: ${err.message}`, 'error');
+            return;
+          }
+        }
+
+        this.isRunning = true;
+        this.isPaused = false;
+        document.getElementById('btn-run').disabled = true;
+        document.getElementById('btn-pause').disabled = false;
+
+        this.loop();
+      }
+
+      pauseSimulation() {
+        this.isPaused = true;
+        document.getElementById('btn-run').disabled = false;
+        document.getElementById('btn-pause').disabled = true;
+      }
+
+      stopSimulation() {
+        this.isRunning = false;
+        this.isPaused = false;
+        if (this.animationTimer) clearTimeout(this.animationTimer);
+        document.getElementById('btn-run').disabled = false;
+        document.getElementById('btn-pause').disabled = true;
+      }
+
+      stepSimulation() {
+        if (this.simulator.isGoalReached()) return;
+
+        if (this.planPathQueue.length > 0) {
+          const target = this.planPathQueue.shift();
+          this.simulator.drone.x = target.x;
+          this.simulator.drone.y = target.y;
+          this.simulator.steps++;
+          this.simulator.visitedCells.add(`${target.x},${target.y}`);
+          this.simulator.pathHistory.push({ x: target.x, y: target.y });
+          this.simulator.revealSensorsFog();
+        } else if (this.userNextAction) {
+          try {
+            const action = this.userNextAction(this.simulator);
+            if (action === 'FORWARD') this.simulator.moveForward();
+            else if (action === 'LEFT') { this.simulator.turnLeft(); this.simulator.moveForward(); }
+            else if (action === 'RIGHT') { this.simulator.turnRight(); this.simulator.moveForward(); }
+            else if (action === 'U_TURN') { this.simulator.uTurn(); this.simulator.moveForward(); }
+          } catch (e) {
+            this.logConsole(`策略執行異常: ${e.message}`, 'error');
+            this.stopSimulation();
+            return;
+          }
+        }
+
+        const elapsed = performance.now() - this.startTime;
+        this.simulator.render();
+        this.updateTelemetry(elapsed);
+
+        if (this.simulator.isGoalReached()) {
+          this.stopSimulation();
+          this.logConsole(`🎉 任務完成！無人機成功探索並尋獲出口！步數: ${this.simulator.steps}，開圖率: ${this.simulator.getDiscoveryRate()}%`, 'success');
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        }
+      }
+
+      loop() {
+        if (!this.isRunning || this.isPaused) return;
+
+        this.stepSimulation();
+
+        if (this.isRunning && !this.simulator.isGoalReached()) {
+          const speed = parseInt(document.getElementById('input-speed').value, 10);
+          const interval = Math.max(10, 1000 / speed);
+          this.animationTimer = setTimeout(() => this.loop(), interval);
+        }
+      }
+
+      runBenchmark() {
+        const tbody = document.getElementById('benchmark-results-body');
+        tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-sky-400 animate-pulse">評測進行中：正在迷霧條件下運行全數演算法...</td></tr>';
+
+        const algos = [
+          { name: '特雷莫演算法 (Trémaux)', code: ALGORITHM_TEMPLATES.tremaux },
+          { name: '增量 DFS 記憶探索', code: ALGORITHM_TEMPLATES.incrementalDfs },
+          { name: '沿牆搜尋法 (Right-Hand)', code: ALGORITHM_TEMPLATES.rightHand },
+          { name: '★ 當前編輯器自訂策略', code: this.editor.getValue() }
+        ];
+
+        const results = [];
+
+        algos.forEach(item => {
+          const sim = new DroneSimulator('drone-canvas');
+          sim.init(this.mazeData, this.gameMode);
+
+          const t0 = performance.now();
+          let maxSteps = 1500;
+          let steps = 0;
+
+          try {
+            const fn = new Function(`${item.code}\n return { nextAction: typeof nextAction !== 'undefined' ? nextAction : null, planPath: typeof planPath !== 'undefined' ? planPath : null };`)();
+
+            if (fn.planPath && this.gameMode === 'known') {
+              const path = fn.planPath(this.mazeData.grid, this.mazeData.start, this.mazeData.goal);
+              const t1 = performance.now();
+              results.push({ name: item.name, time: t1 - t0, steps: path.length, discovery: 100, success: path.length > 0 });
+            } else if (fn.nextAction) {
+              while (!sim.isGoalReached() && steps < maxSteps) {
+                const act = fn.nextAction(sim);
+                if (act === 'FORWARD') sim.moveForward();
+                else if (act === 'LEFT') { sim.turnLeft(); sim.moveForward(); }
+                else if (act === 'RIGHT') { sim.turnRight(); sim.moveForward(); }
+                else if (act === 'U_TURN') { sim.uTurn(); sim.moveForward(); }
+                steps++;
+              }
+              const t1 = performance.now();
+              results.push({
+                name: item.name,
+                time: t1 - t0,
+                steps: sim.steps,
+                discovery: sim.getDiscoveryRate(),
+                success: sim.isGoalReached()
+              });
+            }
+          } catch (e) {
+            results.push({ name: item.name, time: 0, steps: 0, discovery: 0, success: false, error: e.message });
+          }
+        });
+
+        results.sort((a, b) => {
+          if (a.success !== b.success) return b.success - a.success;
+          if (a.steps !== b.steps) return a.steps - b.steps;
+          return a.time - b.time;
+        });
+
+        tbody.innerHTML = '';
+        results.forEach((res, index) => {
+          const tr = document.createElement('tr');
+          tr.className = index === 0 ? 'bg-emerald-950/30 font-bold' : 'hover:bg-slate-900/50';
+
+          const rankBadge = index === 0 ? '🥇 冠軍' : index === 1 ? '🥈 亞軍' : index === 2 ? '🥉 季軍' : `${index + 1}`;
+          const statusBadge = res.success 
+            ? '<span class="text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded text-xs border border-emerald-800">成功尋獲</span>'
+            : '<span class="text-red-400 bg-red-950 px-2 py-0.5 rounded text-xs border border-red-800">未抵達/超時</span>';
+
+          const score = res.success ? Math.max(10, 1000 - res.steps * 3 - Math.floor(res.time)) : 0;
+
+          tr.innerHTML = `
+            <td class="p-3 text-center">${rankBadge}</td>
+            <td class="p-3 text-sky-300 font-semibold">${res.name}</td>
+            <td class="p-3 text-center">${statusBadge}</td>
+            <td class="p-3 text-right text-cyan-400 font-bold">${res.discovery}%</td>
+            <td class="p-3 text-right">${res.steps} 步</td>
+            <td class="p-3 text-right text-amber-400">${res.time.toFixed(2)} ms</td>
+            <td class="p-3 text-center text-emerald-400 font-bold">${score} 分</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      window.app = new AppController();
+    });
+  </script>
+</body>
+</html>

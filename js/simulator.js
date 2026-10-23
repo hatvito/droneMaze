@@ -1,6 +1,6 @@
 /**
  * Simulator.js
- * 迷霧大賽機體感測與物理模擬 (修正版)
+ * 迷霧大賽機體感測與物理模擬
  */
 
 export class DroneSimulator {
@@ -8,6 +8,7 @@ export class DroneSimulator {
     this.canvas = document.getElementById(canvasId);
     this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
     this.maze = null;
+    this.gameMode = 'fog';
     this.drone = { x: 0, y: 0, dirIndex: 1 };
     this.directions = [
       { name: 'NORTH', dx: 0, dy: -1 },
@@ -28,7 +29,7 @@ export class DroneSimulator {
 
   init(maze) {
     if (!this.canvas) {
-      this.canvas = document.getElementById('mazeCanvas');
+      this.canvas = document.getElementById('compCanvas');
       if (this.canvas) this.ctx = this.canvas.getContext('2d');
     }
     this.maze = maze;
@@ -134,7 +135,9 @@ export class DroneSimulator {
     for (let r = 0; r < this.maze.rows; r++) {
       for (let c = 0; c < this.maze.cols; c++) {
         const key = c + ',' + r;
-        if (!this.fogMap.has(key)) {
+        const isRevealed = this.gameMode === 'known' || this.fogMap.has(key);
+
+        if (!isRevealed) {
           ctx.fillStyle = '#070a14';
           ctx.fillRect(c * cs, r * cs, cs, cs);
         } else {
@@ -160,7 +163,7 @@ export class DroneSimulator {
     });
 
     const endKey = this.maze.end.x + ',' + this.maze.end.y;
-    if (this.fogMap.has(endKey)) {
+    if (this.gameMode === 'known' || this.fogMap.has(endKey)) {
       ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
       ctx.arc((this.maze.end.x + 0.5) * cs, (this.maze.end.y + 0.5) * cs, cs * 0.35, 0, Math.PI * 2);

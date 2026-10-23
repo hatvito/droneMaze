@@ -32,14 +32,18 @@ export class Drone {
     ctx.strokeStyle = '#64748b';
     ctx.lineWidth = Math.max(2, cellSize * 0.1);
     ctx.beginPath();
-    ctx.moveTo(-radius, -radius); ctx.lineTo(radius, radius);
-    ctx.moveTo(-radius, radius); ctx.lineTo(radius, -radius);
+    ctx.moveTo(-radius, -radius);
+    ctx.lineTo(radius, radius);
+    ctx.moveTo(-radius, radius);
+    ctx.lineTo(radius, -radius);
     ctx.stroke();
 
     this.propellerAngle += 0.4;
     const motors = [
-      { x: -radius, y: -radius }, { x: radius, y: -radius },
-      { x: -radius, y: radius }, { x: radius, y: radius }
+      { x: -radius, y: -radius },
+      { x: radius, y: -radius },
+      { x: -radius, y: radius },
+      { x: radius, y: radius }
     ];
 
     motors.forEach((pos, idx) => {

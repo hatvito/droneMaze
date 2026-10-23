@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>無人機迷宮尋跡大賽 (Fog & Benchmark)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: { dark: '#0b1120', card: '#151f32', border: '#2a3a54', accent: '#38bdf8' }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- CodeMirror -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-cyber-dark text-slate-100 min-h-screen font-sans grid-bg flex flex-col justify-between">
+
+  <!-- HEADER -->
+  <header class="border-b border-cyber-border bg-cyber-dark/95 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-amber-500 via-orange-600 to-rose-600 rounded-xl shadow-lg shadow-orange-500/20">
+          <i data-lucide="trophy" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-200 bg-clip-text text-transparent">
+            無人機迷霧尋跡大賽
+          </h1>
+          <p class="text-xs text-slate-400">戰爭迷霧未知終點 · 策略填空 · 跨演算法天梯榜</p>
+        </div>
+      </div>
+
+      <a href="index.html" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 shadow transition flex items-center gap-2">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> 回到演算法教學
+      </a>
+    </div>
+  </header>
+
+  <!-- ARENA CONTENT -->
+  <main class="max-w-7xl mx-auto px-4 py-5 w-full flex-grow flex flex-col gap-6">
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- 左側：迷霧模擬畫布與即時機載感測器 -->
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col items-center">
+          <canvas id="compCanvas" class="rounded-lg border border-slate-800 bg-slate-950 shadow-inner"></canvas>
+          
+          <div class="w-full flex items-center justify-center gap-3 mt-4">
+            <button id="btn-comp-run" class="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow">
+              <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> 啟動探索
+            </button>
+            <button id="btn-comp-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 重置迷霧
+            </button>
+          </div>
+        </div>
+
+        <!-- 機載遙測 -->
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <i data-lucide="radar" class="w-4 h-4 text-cyber-accent"></i> 機載感測 Telemetry
+            </span>
+            <span class="text-xs font-mono text-cyan-400 font-bold">開圖率: <span id="comp-discovery">0.0%</span></span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400">當前座標</div>
+              <div id="comp-pos" class="font-mono text-sky-400 font-bold mt-0.5">(1, 1)</div>
+            </div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400">機頭朝向</div>
+              <div id="comp-dir" class="font-mono text-emerald-400 font-bold mt-0.5">EAST</div>
+            </div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+              <div class="text-[10px] text-slate-400">累積步數</div>
+              <div id="comp-steps" class="font-mono text-amber-400 font-bold mt-0.5">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：代碼編輯器 -->
+      <div class="lg:col-span-7 flex flex-col gap-4">
+        <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col h-[520px]">
+          <div class="flex items-center justify-between pb-3 border-b border-cyber-border">
+            <div class="flex items-center gap-2">
+              <i data-lucide="code" class="w-4 h-4 text-emerald-400"></i>
+              <h3 class="font-bold text-sm text-slate-200">探索策略腳本 (Strategy Editor)</h3>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-slate-400">載入範本:</span>
+              <select id="select-comp-template" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-sky-400 font-mono">
+                <option value="tremaux_todo" selected>★【任務填空】特雷莫演算法</option>
+                <option value="tremaux">特雷莫演算法 (完整版)</option>
+                <option value="incrementalDfs">增量 DFS 記憶探索</option>
+                <option value="rightHand">沿牆搜尋法</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex-grow my-3 relative overflow-hidden rounded-lg border border-slate-800">
+            <textarea id="code-editor"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 下方：多演算法天梯榜 (Benchmark) -->
+    <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-cyber-border">
+        <div>
+          <h2 class="text-base font-bold text-cyan-400 flex items-center gap-2">
+            <i data-lucide="award" class="w-5 h-5"></i> 多演算法大賽天梯榜 (Benchmark Leaderboard)
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">在相同迷霧種子條件下，同時評估「特雷莫」、「增量 DFS」、「沿牆法」與「當前自訂策略」。</p>
+        </div>
+        <button id="btn-comp-benchmark" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow">
+          <i data-lucide="play-circle" class="w-4 h-4"></i> 開始全能競賽評測
+        </button>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
+        <table class="w-full text-left text-sm text-slate-300 font-mono">
+          <thead class="bg-slate-900 text-xs uppercase text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-3 text-center">名次</th>
+              <th class="p-3">策略名稱</th>
+              <th class="p-3 text-center">狀態</th>
+              <th class="p-3 text-right">開圖率</th>
+              <th class="p-3 text-right">探索步數</th>
+              <th class="p-3 text-right">耗時</th>
+              <th class="p-3 text-center">綜合評分</th>
+            </tr>
+          </thead>
+          <tbody id="benchmark-body" class="divide-y divide-slate-800/60">
+            <tr>
+              <td colspan="7" class="p-5 text-center text-slate-500">點擊「開始全能競賽評測」啟動跨演算法效能評比</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-cyber-border bg-cyber-dark/80 py-3 text-center text-xs text-slate-500">
+    Drone Maze Competition Lab &copy; 2026 STEM Education Lab
+  </footer>
+
+  <script type="module" src="js/comp-app.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 /**
  * comp-app.js
- * 競賽控制器 (含 AI 領航員麵包屑提問卡)
+ * 競賽控制器 (支援 AI 迷宮教練技能對接)
  */
 
 import { Maze } from './maze.js';
@@ -15,7 +15,7 @@ class CompetitionApp {
     this.maze.generate('prim', 2026);
 
     this.simulator = new DroneSimulator('compCanvas');
-    this.injectHelperMethods(); // 注入輔助函式給學生使用
+    this.injectHelperMethods();
     this.simulator.init(this.maze);
     this.simulator.gameMode = this.gameMode;
 
@@ -26,7 +26,7 @@ class CompetitionApp {
     this.rebuildMaze();
   }
 
-  // 為無人機實體注入學生友善的簡化感測 API
+  // 注入給學生的簡化感測 API
   injectHelperMethods() {
     const sim = this.simulator;
     sim.getVisitCount = function(dirStr) {
@@ -103,35 +103,27 @@ class CompetitionApp {
     setSensorUI('sensor-left', this.simulator.isWallLeft());
   }
 
-  // 核心：組裝給 AI 的糖果屋提問 Prompt
-  generateAiPrompt() {
+  // 自動組裝給「無人機迷宮領航教練技能」的求助卡
+  generateAiSkillPrompt() {
     const sim = this.simulator;
     const code = this.editor ? this.editor.getValue() : '';
-    const frontWall = sim.isWallInFront() ? '撞牆 (WALL)' : '暢通 (CLEAR)';
-    const rightWall = sim.isWallRight() ? '撞牆 (WALL)' : '暢通 (CLEAR)';
-    const leftWall  = sim.isWallLeft()  ? '撞牆 (WALL)' : '暢通 (CLEAR)';
+    const templateSelect = document.getElementById('select-comp-template');
+    const taskName = templateSelect.options[templateSelect.selectedIndex].text;
 
-    const promptText = `你是一位親切的無人機演算法程式教練。我是一名正在學習撰寫「無人機走迷宮」的高中職學生。
-請遵守「糖果屋麵包屑原則」輔導我：
-1. 絕對不要直接給我整段正確程式碼。
-2. 每次只針對我目前卡關的一個小步驟提問，引導我想出解法。
-3. 語氣多鼓勵，用通俗直白的比喻解釋。
+    const frontState = sim.isWallInFront() ? 'WALL' : 'CLEAR';
+    const rightState = sim.isWallRight() ? 'WALL' : 'CLEAR';
+    const leftState  = sim.isWallLeft()  ? 'WALL' : 'CLEAR';
 
-【目前無人機的現場狀況】：
-- 當前座標：(${sim.drone.x}, ${sim.drone.y})
-- 機頭朝向：${sim.heading}
-- 前方感測：${frontWall}
-- 右側感測：${rightWall}
-- 左側感測：${leftWall}
-- 累積步數：${sim.steps} 步
-${this.lastError ? `- 遇到的報錯訊息：${this.lastError}` : ''}
-
-【我目前寫的程式碼】：
-\`\`\`javascript
-${code}
-\`\`\`
-
-請告訴我下一個麵包屑線索是什麼？我應該如何思考下一步？`;
+    let promptText = `【無人機迷宮求助】\n`;
+    promptText += `- 挑戰關卡：${taskName}\n`;
+    promptText += `- 當前座標：(${sim.drone.x}, ${sim.drone.y})，朝向：${sim.heading}\n`;
+    promptText += `- 機載感測狀態：前方=${frontState}, 右方=${rightState}, 左方=${leftState}\n`;
+    promptText += `- 累積步數：${sim.steps} 步\n`;
+    if (this.lastError) {
+      promptText += `- 執行報錯：${this.lastError}\n`;
+    }
+    promptText += `- 我的程式碼：\n\`\`\`javascript\n${code}\n\`\`\`\n`;
+    promptText += `教練，我的無人機卡住了／不知道下一步該怎麼走，請給我下一個麵包屑思考線索！`;
 
     return promptText;
   }
@@ -165,13 +157,13 @@ ${code}
     document.getElementById('btn-comp-run').addEventListener('click', () => this.runCustomCode());
     document.getElementById('btn-comp-benchmark').addEventListener('click', () => this.runBenchmark());
 
-    // 彈窗控制
+    // 技能求助彈窗與複製
     const modal = document.getElementById('modal-ai-prompt');
     const promptArea = document.getElementById('ai-prompt-content');
     const copyStatus = document.getElementById('copy-status');
 
     document.getElementById('btn-open-ai-prompt').addEventListener('click', () => {
-      promptArea.value = this.generateAiPrompt();
+      promptArea.value = this.generateAiSkillPrompt();
       copyStatus.classList.add('hidden');
       modal.classList.remove('hidden');
     });
@@ -201,7 +193,6 @@ ${code}
 
       const loop = () => {
         if (!this.simulator.isGoalReached() && steps < maxSteps) {
-          // 記錄訪問次數以供 getVisitCount 查詢
           if (!this.simulator.memory._visits) this.simulator.memory._visits = {};
           const curKey = this.simulator.drone.x + ',' + this.simulator.drone.y;
           this.simulator.memory._visits[curKey] = (this.simulator.memory._visits[curKey] || 0) + 1;
@@ -222,7 +213,7 @@ ${code}
       loop();
     } catch (err) {
       this.lastError = err.message;
-      alert('語法或執行有問題：' + err.message + '\n\n💡 提示：您可以點擊右上角「呼叫 AI 領航員提問卡」求助！');
+      alert('語法或執行有問題：' + err.message + '\n\n💡 提示：您可以點擊右上角「呼叫 AI 領航教練」求助！');
     }
   }
 

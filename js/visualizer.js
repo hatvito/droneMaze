@@ -77,7 +77,7 @@ export class Visualizer {
     ctx.lineWidth = 2;
     ctx.strokeRect(x * cs + 2, y * cs + 2, cs - 4, cs - 4);
     ctx.fillStyle = color;
-    ctx.font = `bold ${Math.floor(cs * 0.5)}px sans-serif`;
+    ctx.font = 'bold ' + Math.floor(cs * 0.5) + 'px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, cx, cy);

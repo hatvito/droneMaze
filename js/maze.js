@@ -1,6 +1,6 @@
 /**
  * Maze.js
- * 迷宮資料結構與地圖產生器
+ * 迷宮資料結構與可重現地圖生成
  */
 
 export class MathRandomSeed {
@@ -42,13 +42,19 @@ export class Maze {
     if (algo === 'dfs') {
       const stack = [{ x: 1, y: 1 }];
       this.grid[1][1] = 0;
-      const dirs = [{ dx: 0, dy: -2 }, { dx: 2, dy: 0 }, { dx: 0, dy: 2 }, { dx: -2, dy: 0 }];
+      const dirs = [
+        { dx: 0, dy: -2 },
+        { dx: 2, dy: 0 },
+        { dx: 0, dy: 2 },
+        { dx: -2, dy: 0 }
+      ];
 
       while (stack.length > 0) {
         const curr = stack[stack.length - 1];
         const neighbors = [];
         for (const d of dirs) {
-          const nx = curr.x + d.dx, ny = curr.y + d.dy;
+          const nx = curr.x + d.dx;
+          const ny = curr.y + d.dy;
           if (nx > 0 && nx < this.cols - 1 && ny > 0 && ny < this.rows - 1 && this.grid[ny][nx] === 1) {
             neighbors.push({ x: nx, y: ny, dx: d.dx / 2, dy: d.dy / 2 });
           }

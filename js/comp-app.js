@@ -1,6 +1,6 @@
 /**
  * comp-app.js
- * 專供 competition.html 使用的競賽控制器
+ * 競賽控制器
  */
 
 import { Maze } from './maze.js';
@@ -10,16 +10,18 @@ import { BenchmarkEngine } from './benchmark.js';
 
 class CompetitionApp {
   constructor() {
-    this.maze = new Maze(21, 21, 2026);
+    this.gameMode = 'fog';
+    this.maze = new Maze(15, 15, 2026);
     this.maze.generate('prim', 2026);
 
     this.simulator = new DroneSimulator('compCanvas');
     this.simulator.init(this.maze);
+    this.simulator.gameMode = this.gameMode;
 
     this.editor = null;
     this.initEditor();
     this.bindEvents();
-    this.updateTelemetry();
+    this.rebuildMaze();
   }
 
   initEditor() {
@@ -36,14 +38,72 @@ class CompetitionApp {
     this.editor.setValue(ALGORITHM_TEMPLATES.tremaux_todo);
   }
 
+  setGameMode(mode) {
+    this.gameMode = mode;
+    this.simulator.gameMode = mode;
+    const btnKnown = document.getElementById('btn-mode-known');
+    const btnFog = document.getElementById('btn-mode-fog');
+
+    if (mode === 'known') {
+      btnKnown.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-emerald-950 text-emerald-300 border border-emerald-700 shadow';
+      btnFog.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200';
+    } else {
+      btnFog.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-cyan-950 text-cyan-300 border border-cyan-700 shadow';
+      btnKnown.className = 'px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200';
+    }
+    this.simulator.render();
+  }
+
+  rebuildMaze() {
+    const size = parseInt(document.getElementById('select-maze-size').value, 10);
+    const seed = parseInt(document.getElementById('input-seed').value, 10);
+    const algo = document.getElementById('select-maze-algo').value;
+
+    this.maze.cols = size;
+    this.maze.rows = size;
+    this.maze.generate(algo, seed);
+
+    this.simulator.init(this.maze);
+    this.simulator.gameMode = this.gameMode;
+    this.updateTelemetry();
+  }
+
   updateTelemetry() {
     document.getElementById('comp-pos').textContent = '(' + this.simulator.drone.x + ', ' + this.simulator.drone.y + ')';
     document.getElementById('comp-dir').textContent = this.simulator.heading;
     document.getElementById('comp-steps').textContent = this.simulator.steps;
     document.getElementById('comp-discovery').textContent = this.simulator.getDiscoveryRate() + '%';
+
+    const setSensorUI = (id, isWall) => {
+      const el = document.getElementById(id);
+      if (isWall) {
+        el.textContent = 'WALL';
+        el.className = 'mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-950 text-red-400 border border-red-800';
+      } else {
+        el.textContent = 'CLEAR';
+        el.className = 'mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800';
+      }
+    };
+
+    setSensorUI('sensor-front', this.simulator.isWallInFront());
+    setSensorUI('sensor-right', this.simulator.isWallRight());
+    setSensorUI('sensor-back', this.simulator.isWallBack());
+    setSensorUI('sensor-left', this.simulator.isWallLeft());
   }
 
   bindEvents() {
+    document.getElementById('btn-mode-known').addEventListener('click', () => this.setGameMode('known'));
+    document.getElementById('btn-mode-fog').addEventListener('click', () => this.setGameMode('fog'));
+
+    document.getElementById('btn-rebuild-maze').addEventListener('click', () => this.rebuildMaze());
+    document.getElementById('select-maze-size').addEventListener('change', () => this.rebuildMaze());
+    document.getElementById('select-maze-algo').addEventListener('change', () => this.rebuildMaze());
+
+    document.getElementById('btn-random-seed').addEventListener('click', () => {
+      document.getElementById('input-seed').value = Math.floor(Math.random() * 90000) + 10000;
+      this.rebuildMaze();
+    });
+
     document.getElementById('select-comp-template').addEventListener('change', (e) => {
       const key = e.target.value;
       if (ALGORITHM_TEMPLATES[key] && this.editor) {
@@ -53,6 +113,7 @@ class CompetitionApp {
 
     document.getElementById('btn-comp-reset').addEventListener('click', () => {
       this.simulator.init(this.maze);
+      this.simulator.gameMode = this.gameMode;
       this.updateTelemetry();
     });
 
@@ -62,6 +123,7 @@ class CompetitionApp {
 
   runCustomCode() {
     this.simulator.init(this.maze);
+    this.simulator.gameMode = this.gameMode;
     const code = this.editor.getValue();
     try {
       const fn = new Function(code + '\n return nextAction;')();

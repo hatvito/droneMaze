@@ -17,10 +17,12 @@
       }
     }
   </script>
+  <!-- CodeMirror -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+  
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
@@ -38,13 +40,14 @@
           <h1 class="text-xl font-extrabold bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-200 bg-clip-text text-transparent">
             無人機迷霧尋跡大賽
           </h1>
-          <p class="text-xs text-slate-400">戰爭迷霧未知終點 · 糖果屋麵包屑任務 · AI 領航員協同</p>
+          <p class="text-xs text-slate-400">戰爭迷霧未知終點 · 糖果屋麵包屑任務 · AI 教練技能協同</p>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
+        <!-- 呼叫教練技能按鈕 -->
         <button id="btn-open-ai-prompt" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/50 shadow transition flex items-center gap-2">
-          <i data-lucide="bot" class="w-4 h-4 text-indigo-400"></i> 呼叫 AI 領航員提問卡
+          <i data-lucide="bot" class="w-4 h-4 text-indigo-400"></i> 呼叫 AI 領航教練
         </button>
         <a href="index.html" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 shadow transition flex items-center gap-2">
           <i data-lucide="arrow-left" class="w-4 h-4"></i> 回到演算法教學
@@ -58,6 +61,7 @@
 
     <!-- 頂部控制面板 -->
     <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      <!-- 模式切換 -->
       <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
         <button id="btn-mode-known" class="px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-slate-200">
           <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i> 已知終點模式
@@ -67,6 +71,7 @@
         </button>
       </div>
 
+      <!-- 迷宮配置與種子 -->
       <div class="flex flex-wrap items-center gap-3 text-sm">
         <div class="flex items-center gap-1.5">
           <label class="text-slate-400 text-xs flex items-center gap-1"><i data-lucide="grid" class="w-3.5 h-3.5"></i> 尺寸:</label>
@@ -102,7 +107,7 @@
 
     <!-- 舞台區域 -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      <!-- 左側畫布與感測儀表 -->
+      <!-- 左側：畫布與 Telemetry -->
       <div class="lg:col-span-5 flex flex-col gap-4">
         <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col items-center relative">
           <canvas id="compCanvas" class="rounded-lg border border-slate-800 bg-slate-950 shadow-inner"></canvas>
@@ -117,6 +122,7 @@
           </div>
         </div>
 
+        <!-- Telemetry 機載儀表 -->
         <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl">
           <div class="flex justify-between items-center mb-2">
             <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
@@ -140,6 +146,7 @@
             </div>
           </div>
 
+          <!-- 前後左右接近感測器 -->
           <div class="bg-slate-900/90 p-2.5 rounded border border-slate-800 grid grid-cols-4 gap-2 text-center">
             <div>
               <div class="text-[10px] text-slate-400">前方 (Front)</div>
@@ -161,7 +168,7 @@
         </div>
       </div>
 
-      <!-- 右側策略編輯器 -->
+      <!-- 右側：策略編輯器 -->
       <div class="lg:col-span-7 flex flex-col gap-4">
         <div class="bg-cyber-card border border-cyber-border rounded-xl p-4 shadow-xl flex flex-col h-[520px]">
           <div class="flex items-center justify-between pb-3 border-b border-cyber-border">
@@ -170,11 +177,11 @@
               <h3 class="font-bold text-sm text-slate-200">探索策略腳本 (Strategy Editor)</h3>
             </div>
             <div class="flex items-center gap-2 text-xs">
-              <span class="text-slate-400">載入範本:</span>
+              <span class="text-slate-400">載入任務範本:</span>
               <select id="select-comp-template" class="bg-slate-900 border border-cyber-border rounded px-2 py-1 text-sky-400 font-mono">
-                <option value="breadcrumbs_step1" selected>🍞【新手麵包屑 1】沿牆優先權調校</option>
-                <option value="breadcrumbs_step2">🍞【新手麵包屑 2】避死胡同填空</option>
-                <option value="tremaux_simple">🍞【進階麵包屑 3】開盲盒記憶探索</option>
+                <option value="breadcrumbs_step1" selected>🍞【任務 1】沿牆優先權調校</option>
+                <option value="breadcrumbs_step2">🍞【任務 2】避死胡同單行填空</option>
+                <option value="tremaux_simple">🍞【任務 3】開盲盒記憶探索</option>
                 <option value="tremaux">特雷莫演算法 (完整版)</option>
                 <option value="incrementalDfs">增量 DFS 記憶探索</option>
                 <option value="rightHand">沿牆搜尋法 (標準版)</option>
@@ -188,7 +195,7 @@
       </div>
     </div>
 
-    <!-- 下方天梯榜 -->
+    <!-- 下方：多演算法天梯榜 (Benchmark) -->
     <div class="bg-cyber-card border border-cyber-border rounded-xl p-5 shadow-xl">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-cyber-border">
         <div>
@@ -226,12 +233,12 @@
 
   </main>
 
-  <!-- 🍞 AI 領航員麵包屑提問卡彈窗 -->
+  <!-- 🍞 呼叫 AI 領航教練技能求助彈窗 -->
   <div id="modal-ai-prompt" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-cyber-card border border-cyber-border rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col gap-4">
       <div class="flex items-center justify-between border-b border-cyber-border pb-3">
         <h3 class="text-base font-bold text-indigo-400 flex items-center gap-2">
-          <i data-lucide="bot" class="w-5 h-5"></i> 糖果屋 AI 領航員提問卡
+          <i data-lucide="bot" class="w-5 h-5"></i> 呼叫無人機迷宮教練技能 (Drone Maze Coach)
         </h3>
         <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -239,18 +246,18 @@
       </div>
 
       <p class="text-xs text-slate-300 leading-relaxed">
-        系統已自動將您無人機的<strong>當前卡關位置、周遭牆壁狀態與目前撰寫的代碼</strong>打包成蘇格拉底引導式的提問詞。點擊下方按鈕複製後，貼給 AI（Gemini / ChatGPT），AI 將逐步引導您思考，而不是直接劇透答案！
+        系統已將您無人機的<strong>當前卡關位置、感測器狀態與撰寫代碼</strong>打包完成。請點擊「一鍵複製」，並貼到已啟用<strong>「無人機迷宮領航教練技能」</strong>的對話框中，教練將依據麵包屑原則進行 1 對 1 引導！
       </p>
 
       <textarea id="ai-prompt-content" readonly class="w-full h-44 bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs font-mono text-emerald-300 focus:outline-none select-all"></textarea>
 
       <div class="flex justify-between items-center pt-2">
         <span id="copy-status" class="text-xs text-emerald-400 font-bold hidden flex items-center gap-1">
-          <i data-lucide="check" class="w-3.5 h-3.5"></i> 已成功複製到剪貼簿！請切換至 AI 貼上
+          <i data-lucide="check" class="w-3.5 h-3.5"></i> 已複製！請前往對話視窗貼上並送出
         </span>
         <div class="flex gap-2 ml-auto">
           <button id="btn-copy-prompt" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i> 一鍵複製 Prompt
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i> 一鍵複製求助卡
           </button>
         </div>
       </div>

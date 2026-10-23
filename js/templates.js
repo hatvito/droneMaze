@@ -8,7 +8,7 @@ export const ALGORITHM_TEMPLATES = {
 // 提示：利用 drone.memory.visited 記錄次數，並優先挑選走過最少的方向
 function nextAction(drone) {
   if (!drone.memory.visited) drone.memory.visited = {};
-  const posKey = \`\${drone.x},\${drone.y}\`;
+  const posKey = drone.x + ',' + drone.y;
   
   // TODO 1: 當前所在格子訪問次數 + 1
   drone.memory.visited[posKey] = (drone.memory.visited[posKey] || 0) + 1;
@@ -18,19 +18,19 @@ function nextAction(drone) {
   // TODO 2: 依序檢查前方、右方、左方是否暢通
   if (!drone.isWallInFront()) {
     const fPos = drone.getRelativePos('FRONT');
-    const fCount = drone.memory.visited[\`\${fPos.x},\${fPos.y}\`] || 0;
+    const fCount = drone.memory.visited[fPos.x + ',' + fPos.y] || 0;
     candidates.push({ action: 'FORWARD', count: fCount });
   }
   if (!drone.isWallRight()) {
     // 【填空區】：請取得右方座標並加入 candidates
     const rPos = drone.getRelativePos('RIGHT');
-    const rCount = drone.memory.visited[\`\${rPos.x},\${rPos.y}\`] || 0;
+    const rCount = drone.memory.visited[rPos.x + ',' + rPos.y] || 0;
     candidates.push({ action: 'RIGHT', count: rCount });
   }
   if (!drone.isWallLeft()) {
     // 【填空區】：請取得左方座標並加入 candidates
     const lPos = drone.getRelativePos('LEFT');
-    const lCount = drone.memory.visited[\`\${lPos.x},\${lPos.y}\`] || 0;
+    const lCount = drone.memory.visited[lPos.x + ',' + lPos.y] || 0;
     candidates.push({ action: 'LEFT', count: lCount });
   }
 
@@ -39,7 +39,7 @@ function nextAction(drone) {
     return 'U_TURN';
   }
 
-  // TODO 4: 根據訪問次數排序 candidates
+  // TODO 4: 根據訪問次數排序 candidates (由小到大)
   candidates.sort((a, b) => a.count - b.count);
 
   return candidates[0].action;
@@ -48,21 +48,21 @@ function nextAction(drone) {
   tremaux: `// 特雷莫演算法 (Trémaux's Algorithm) - 未知終點/迷霧專用
 function nextAction(drone) {
   if (!drone.memory.visited) drone.memory.visited = {};
-  const posKey = \`\${drone.x},\${drone.y}\`;
+  const posKey = drone.x + ',' + drone.y;
   drone.memory.visited[posKey] = (drone.memory.visited[posKey] || 0) + 1;
 
   const candidates = [];
   if (!drone.isWallInFront()) {
     const fPos = drone.getRelativePos('FRONT');
-    candidates.push({ action: 'FORWARD', count: drone.memory.visited[\`\${fPos.x},\${fPos.y}\`] || 0 });
+    candidates.push({ action: 'FORWARD', count: drone.memory.visited[fPos.x + ',' + fPos.y] || 0 });
   }
   if (!drone.isWallRight()) {
     const rPos = drone.getRelativePos('RIGHT');
-    candidates.push({ action: 'RIGHT', count: drone.memory.visited[\`\${rPos.x},\${rPos.y}\`] || 0 });
+    candidates.push({ action: 'RIGHT', count: drone.memory.visited[rPos.x + ',' + rPos.y] || 0 });
   }
   if (!drone.isWallLeft()) {
     const lPos = drone.getRelativePos('LEFT');
-    candidates.push({ action: 'LEFT', count: drone.memory.visited[\`\${lPos.x},\${lPos.y}\`] || 0 });
+    candidates.push({ action: 'LEFT', count: drone.memory.visited[lPos.x + ',' + lPos.y] || 0 });
   }
 
   if (candidates.length === 0) return 'U_TURN';
@@ -74,12 +74,12 @@ function nextAction(drone) {
 function nextAction(drone) {
   if (!drone.memory.stack) {
     drone.memory.stack = [{ x: drone.x, y: drone.y }];
-    drone.memory.visited = new Set([\`\${drone.x},\${drone.y}\`]);
+    drone.memory.visited = new Set([drone.x + ',' + drone.y]);
   }
 
   const checkDirection = (action, getPosFn) => {
     const p = getPosFn();
-    const key = \`\${p.x},\${p.y}\`;
+    const key = p.x + ',' + p.y;
     if (!drone.memory.visited.has(key)) {
       drone.memory.visited.add(key);
       drone.memory.stack.push(p);
